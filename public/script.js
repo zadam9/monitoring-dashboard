@@ -11,7 +11,11 @@ const appState = {
   refreshInterval: 5000,
   animationEnabled: true,
   compactMode: false,
-  primaryColor: '#0db7ed'
+  primaryColor: '#0db7ed',
+  apiKey: localStorage.getItem('api_key') || '',
+  currentHistoryPeriod: '24h',
+  systemHistory: [],
+  websiteHistory: []
 };
 
 // Configuration des graphiques
@@ -32,6 +36,9 @@ const chartData = {
 
 // Initialisation des graphiques
 let cpuDonutChart, memoryDonutChart, resourcesChart;
+
+// Variables pour les nouveaux graphiques
+let cpuHistoryChart, memoryHistoryChart, uptimeHistoryChart, websiteHistoryChart;
 
 // Fonction pour obtenir l'heure actuelle formatée
 function getCurrentTime() {
@@ -171,6 +178,188 @@ function initCharts() {
   });
 }
 
+// Fonction pour initialiser les graphiques d'historique
+function initHistoryCharts() {
+  // CPU History Chart
+  const cpuHistoryCtx = document.getElementById('cpu-history-chart').getContext('2d');
+  cpuHistoryChart = new Chart(cpuHistoryCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'CPU Utilisation (%)',
+        data: [],
+        borderColor: appState.primaryColor,
+        backgroundColor: `${appState.primaryColor}20`,
+        borderWidth: 2,
+        pointRadius: 1,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxTicksLimit: 8,
+            callback: function(value, index, values) {
+              const date = new Date(appState.systemHistory[index]?.timestamp);
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            stepSize: 20
+          }
+        }
+      }
+    }
+  });
+  
+  // Memory History Chart
+  const memoryHistoryCtx = document.getElementById('memory-history-chart').getContext('2d');
+  memoryHistoryChart = new Chart(memoryHistoryCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Mémoire Utilisation (%)',
+        data: [],
+        borderColor: '#384d54',
+        backgroundColor: '#384d5420',
+        borderWidth: 2,
+        pointRadius: 1,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxTicksLimit: 8,
+            callback: function(value, index, values) {
+              const date = new Date(appState.systemHistory[index]?.timestamp);
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            stepSize: 20
+          }
+        }
+      }
+    }
+  });
+  
+  // Website Status History Chart
+  const websiteHistoryCtx = document.getElementById('website-history-chart').getContext('2d');
+  websiteHistoryChart = new Chart(websiteHistoryCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Statut du site',
+        data: [],
+        borderColor: '#27ae60',
+        backgroundColor: '#27ae6020',
+        borderWidth: 2,
+        pointRadius: 2,
+        stepped: true,
+        tension: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const value = context.raw;
+              if (value === 2) return 'UP';
+              if (value === 1) return 'PARTIAL';
+              return 'DOWN';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxTicksLimit: 8,
+            callback: function(value, index, values) {
+              const date = new Date(appState.websiteHistory[index]?.timestamp);
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 2,
+          ticks: {
+            stepSize: 1,
+            callback: function(value) {
+              if (value === 2) return 'UP';
+              if (value === 1) return 'PARTIAL';
+              return 'DOWN';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
 // Fonction pour mettre à jour les graphiques
 function updateCharts(cpuUsage, memoryUsage) {
   const now = getCurrentTime();
@@ -204,6 +393,71 @@ function updateCharts(cpuUsage, memoryUsage) {
   document.getElementById('cpu-usage-overview').textContent = `${cpuUsage.toFixed(1)}%`;
   document.getElementById('memory-usage').textContent = `${memoryUsage.toFixed(1)}%`;
   document.getElementById('memory-usage-overview').textContent = `${memoryUsage.toFixed(1)}%`;
+}
+
+// Fonction pour mettre à jour les graphiques d'historique
+function updateHistoryCharts() {
+  if (!cpuHistoryChart || !memoryHistoryChart || !websiteHistoryChart) {
+    return;
+  }
+  
+  // Mettre à jour le graphique CPU
+  cpuHistoryChart.data.labels = appState.systemHistory.map(entry => '');
+  cpuHistoryChart.data.datasets[0].data = appState.systemHistory.map(entry => entry.cpu);
+  cpuHistoryChart.update();
+  
+  // Mettre à jour le graphique mémoire
+  memoryHistoryChart.data.labels = appState.systemHistory.map(entry => '');
+  memoryHistoryChart.data.datasets[0].data = appState.systemHistory.map(entry => entry.memory);
+  memoryHistoryChart.update();
+  
+  // Mettre à jour le graphique du statut du site
+  websiteHistoryChart.data.labels = appState.websiteHistory.map(entry => '');
+  websiteHistoryChart.data.datasets[0].data = appState.websiteHistory.map(entry => {
+    if (entry.status === 'UP') return 2;
+    if (entry.status === 'PARTIAL') return 1;
+    return 0;
+  });
+  websiteHistoryChart.update();
+}
+
+// Fonction pour charger l'historique depuis le serveur
+async function loadHistory(period = '24h') {
+  try {
+    // Charger l'historique système
+    const systemResponse = await fetch(`/api/history/system?period=${period}`);
+    if (!systemResponse.ok) {
+      throw new Error('Erreur lors du chargement de l\'historique système');
+    }
+    appState.systemHistory = await systemResponse.json();
+    
+    // Charger l'historique du site web
+    const websiteResponse = await fetch(`/api/history/website?period=${period}`);
+    if (!websiteResponse.ok) {
+      throw new Error('Erreur lors du chargement de l\'historique du site web');
+    }
+    appState.websiteHistory = await websiteResponse.json();
+    
+    // Mettre à jour les graphiques
+    updateHistoryCharts();
+    
+    console.log(`Historique chargé pour la période ${period}`);
+  } catch (error) {
+    console.error('Erreur lors du chargement de l\'historique:', error);
+    showAlert(`Erreur lors du chargement de l'historique: ${error.message}`, 'danger');
+  }
+}
+
+// Fonction pour changer la période d'historique
+function changeHistoryPeriod(period) {
+  appState.currentHistoryPeriod = period;
+  loadHistory(period);
+  
+  // Mettre à jour l'UI
+  document.querySelectorAll('.history-period-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`.history-period-btn[data-period="${period}"]`).classList.add('active');
 }
 
 // Fonction pour changer de section
@@ -386,6 +640,13 @@ function updateContainersList(containers) {
         ${container.image}
       </div>
       <div class="container-ports">${portsHTML}</div>
+      <div class="container-controls">
+        ${container.state === 'running' ? 
+          `<button class="container-control-btn stop" data-id="${container.id}"><i class="fas fa-stop"></i> Arrêter</button>
+          <button class="container-control-btn restart" data-id="${container.id}"><i class="fas fa-sync"></i> Redémarrer</button>` : 
+          `<button class="container-control-btn start" data-id="${container.id}"><i class="fas fa-play"></i> Démarrer</button>`
+        }
+      </div>
     `;
     
     // Ajouter à la grille
@@ -414,6 +675,35 @@ function updateContainersList(containers) {
     }
     
     containerSelector.appendChild(option);
+    
+    // Ajouter les écouteurs pour les contrôles de containers
+    const startBtn = containerCard.querySelector('.container-control-btn.start');
+    const stopBtn = containerCard.querySelector('.container-control-btn.stop');
+    const restartBtn = containerCard.querySelector('.container-control-btn.restart');
+    
+    if (startBtn) {
+      startBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const containerId = e.currentTarget.dataset.id;
+        controlContainer(containerId, 'start');
+      });
+    }
+    
+    if (stopBtn) {
+      stopBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const containerId = e.currentTarget.dataset.id;
+        controlContainer(containerId, 'stop');
+      });
+    }
+    
+    if (restartBtn) {
+      restartBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const containerId = e.currentTarget.dataset.id;
+        controlContainer(containerId, 'restart');
+      });
+    }
   });
   
   // Si aucun container n'était précédemment sélectionné, sélectionner et charger le premier
@@ -808,10 +1098,150 @@ function showContainerDetails(container) {
   });
 }
 
+// Fonctions pour contrôler les containers
+async function controlContainer(containerId, action) {
+  if (!appState.apiKey) {
+    showApiKeyPrompt(() => controlContainer(containerId, action));
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/containers/${containerId}/${action}?api_key=${appState.apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': appState.apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Erreur lors de l'action ${action}`);
+    }
+    
+    const result = await response.json();
+    showAlert(`Action ${action} réussie sur le container ${result.id}`, 'success');
+    
+    // Rafraîchir la liste des containers après 2 secondes
+    setTimeout(async () => {
+      const containers = await getContainers();
+      updateContainersList(containers);
+    }, 2000);
+    
+  } catch (error) {
+    console.error(`Erreur ${action}:`, error);
+    showAlert(error.message, 'danger');
+    
+    // Si l'erreur est liée à l'API key, demander une nouvelle clé
+    if (error.message.includes('API key')) {
+      showApiKeyPrompt(() => controlContainer(containerId, action));
+    }
+  }
+}
+
+// Fonction pour demander la clé API
+function showApiKeyPrompt(callback) {
+  const modal = document.getElementById('api-key-modal');
+  const input = document.getElementById('api-key-input');
+  const saveButton = document.getElementById('save-api-key');
+  
+  // Si le modal n'existe pas, le créer
+  if (!modal) {
+    const modalHTML = `
+      <div id="api-key-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Clé API requise</h3>
+            <span class="modal-close">&times;</span>
+          </div>
+          <div class="modal-body">
+            <p>Une clé API est requise pour effectuer des actions sur les containers.</p>
+            <div class="form-group">
+              <label for="api-key-input">Clé API :</label>
+              <input type="password" id="api-key-input" placeholder="Entrez votre clé API">
+            </div>
+            <div class="form-actions">
+              <button id="save-api-key" class="action-button">Enregistrer</button>
+              <button id="cancel-api-key" class="action-button secondary">Annuler</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    const newModal = document.getElementById('api-key-modal');
+    const newInput = document.getElementById('api-key-input');
+    const newSaveButton = document.getElementById('save-api-key');
+    const cancelButton = document.getElementById('cancel-api-key');
+    const closeButton = newModal.querySelector('.modal-close');
+    
+    // Gérer la fermeture du modal
+    closeButton.addEventListener('click', () => {
+      newModal.classList.remove('active');
+    });
+    
+    cancelButton.addEventListener('click', () => {
+      newModal.classList.remove('active');
+    });
+    
+    // Gérer l'enregistrement de la clé API
+    newSaveButton.addEventListener('click', () => {
+      appState.apiKey = newInput.value.trim();
+      localStorage.setItem('api_key', appState.apiKey);
+      newModal.classList.remove('active');
+      
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    });
+    
+    // Afficher le modal
+    newModal.classList.add('active');
+    newInput.focus();
+  } else {
+    // Réinitialiser et afficher le modal existant
+    input.value = appState.apiKey || '';
+    modal.classList.add('active');
+    input.focus();
+    
+    // Mettre à jour le callback
+    saveButton.onclick = () => {
+      appState.apiKey = input.value.trim();
+      localStorage.setItem('api_key', appState.apiKey);
+      modal.classList.remove('active');
+      
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    };
+  }
+}
+
+// Abonnements WebSocket
+socket.on('systemHistory', (history) => {
+  console.log('Historique système reçu:', history.length, 'entrées');
+  appState.systemHistory = history;
+  updateHistoryCharts();
+});
+
+socket.on('websiteHistory', (history) => {
+  console.log('Historique du site web reçu:', history.length, 'entrées');
+  appState.websiteHistory = history;
+  updateHistoryCharts();
+});
+
 // Initialisation du DOM
 document.addEventListener('DOMContentLoaded', () => {
   // Initialiser les graphiques
   initCharts();
+  
+  // Initialiser les graphiques d'historique
+  initHistoryCharts();
+  
+  // Charger l'historique initial
+  loadHistory('24h');
   
   // Appliquer le thème initial
   const savedTheme = localStorage.getItem('theme') || 'light';
@@ -997,4 +1427,12 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Écouteur pour le bouton d'exportation
   document.getElementById('export-report').addEventListener('click', exportSystemReport);
+  
+  // Écouteurs pour les boutons de période d'historique
+  document.querySelectorAll('.history-period-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const period = e.currentTarget.dataset.period;
+      changeHistoryPeriod(period);
+    });
+  });
 }); 

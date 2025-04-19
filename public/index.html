@@ -272,6 +272,40 @@
               </div>
             </div>
           </div>
+          
+          <!-- Après la section des métriques en temps réel -->
+          <div class="grid-item grid-item-wide">
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="fas fa-history"></i> Historique des Performances</h3>
+                <div class="card-actions">
+                  <div class="history-period-selector">
+                    <button class="history-period-btn active" data-period="24h">24h</button>
+                    <button class="history-period-btn" data-period="7d">7j</button>
+                    <button class="history-period-btn" data-period="30d">30j</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="history-tabs">
+                  <div class="history-tab active" data-tab="cpu-history">CPU</div>
+                  <div class="history-tab" data-tab="memory-history">Mémoire</div>
+                  <div class="history-tab" data-tab="website-history">Site Web</div>
+                </div>
+                <div class="history-content">
+                  <div class="history-pane active" id="cpu-history">
+                    <canvas id="cpu-history-chart"></canvas>
+                  </div>
+                  <div class="history-pane" id="memory-history">
+                    <canvas id="memory-history-chart"></canvas>
+                  </div>
+                  <div class="history-pane" id="website-history">
+                    <canvas id="website-history-chart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -470,5 +504,148 @@
   </div>
   
   <script src="script.js"></script>
+  <style>
+    /* Styles pour les boutons de contrôle des containers */
+    .container-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .container-control-btn {
+      padding: 8px 12px;
+      border-radius: var(--border-radius);
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: var(--transition);
+      color: white;
+    }
+    
+    .container-control-btn.start {
+      background-color: var(--success-color);
+    }
+    
+    .container-control-btn.stop {
+      background-color: var(--danger-color);
+    }
+    
+    .container-control-btn.restart {
+      background-color: var(--warning-color);
+    }
+    
+    .container-control-btn:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    
+    /* Styles pour l'historique */
+    .history-period-selector {
+      display: flex;
+      gap: 5px;
+    }
+    
+    .history-period-btn {
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      background-color: var(--bg-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    
+    .history-period-btn.active, 
+    .history-period-btn:hover {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .history-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+    
+    .history-tab {
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+    
+    .history-tab.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .history-pane {
+      display: none;
+      height: 300px;
+    }
+    
+    .history-pane.active {
+      display: block;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--text-secondary);
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+      background-color: var(--card-bg);
+      color: var(--text-color);
+    }
+    
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .action-button.secondary {
+      background-color: var(--card-header);
+      color: var(--text-color);
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Gestionnaire pour les onglets d'historique
+      document.querySelectorAll('.history-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          // Désactiver tous les onglets
+          document.querySelectorAll('.history-tab').forEach(t => {
+            t.classList.remove('active');
+          });
+          
+          // Cacher tous les panneaux
+          document.querySelectorAll('.history-pane').forEach(pane => {
+            pane.classList.remove('active');
+          });
+          
+          // Activer l'onglet cliqué
+          this.classList.add('active');
+          
+          // Afficher le panneau correspondant
+          const tabId = this.dataset.tab;
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+    });
+  </script>
 </body>
 </html> 

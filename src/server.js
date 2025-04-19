@@ -7,12 +7,59 @@ const path = require('path');
 const morgan = require('morgan');
 const { exec } = require('child_process');
 const os = require('os');
+const fs = require('fs');
 
 // Initialisation de l'app
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 const docker = new Docker();
+
+// Chemin des fichiers d'historique
+const DATA_DIR = path.join(__dirname, '../data');
+const SYSTEM_HISTORY_FILE = path.join(DATA_DIR, 'system_history.json');
+const WEBSITE_HISTORY_FILE = path.join(DATA_DIR, 'website_history.json');
+
+// Création du répertoire de données si n'existe pas
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Initialisation des historiques
+let systemHistory = [];
+let websiteHistory = [];
+
+// Chargement des historiques existants
+try {
+  if (fs.existsSync(SYSTEM_HISTORY_FILE)) {
+    systemHistory = JSON.parse(fs.readFileSync(SYSTEM_HISTORY_FILE, 'utf8'));
+    console.log(`Historique système chargé : ${systemHistory.length} entrées`);
+  }
+  if (fs.existsSync(WEBSITE_HISTORY_FILE)) {
+    websiteHistory = JSON.parse(fs.readFileSync(WEBSITE_HISTORY_FILE, 'utf8'));
+    console.log(`Historique site web chargé : ${websiteHistory.length} entrées`);
+  }
+} catch (error) {
+  console.error('Erreur lors du chargement de l\'historique:', error);
+}
+
+// Fonction pour sauvegarder les historiques
+function saveHistory() {
+  try {
+    // Limiter l'historique à 1000 entrées (environ 83 heures à 5 minutes d'intervalle)
+    if (systemHistory.length > 1000) {
+      systemHistory = systemHistory.slice(systemHistory.length - 1000);
+    }
+    if (websiteHistory.length > 1000) {
+      websiteHistory = websiteHistory.slice(websiteHistory.length - 1000);
+    }
+    
+    fs.writeFileSync(SYSTEM_HISTORY_FILE, JSON.stringify(systemHistory));
+    fs.writeFileSync(WEBSITE_HISTORY_FILE, JSON.stringify(websiteHistory));
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde de l\'historique:', error);
+  }
+}
 
 // Middleware
 app.use(cors());
@@ -22,6 +69,21 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Port d'écoute
 const PORT = process.env.PORT || 8080;
+
+// Clé API pour sécuriser les actions d'administration
+// En production, utilisez une variable d'environnement ou une configuration sécurisée
+const API_KEY = process.env.API_KEY || 'labordashboard2024';
+
+// Middleware pour vérifier l'API key
+const verifyApiKey = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'] || req.query.api_key;
+  
+  if (!apiKey || apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'API key invalide ou manquante' });
+  }
+  
+  next();
+};
 
 // Fonction pour récupérer les statistiques système
 async function getSystemStats() {
@@ -239,9 +301,49 @@ app.get('/api/website/status', async (req, res) => {
   }
 });
 
+// Nouvelle route pour l'historique du système
+app.get('/api/history/system', (req, res) => {
+  // Filtrer selon la période demandée
+  const period = req.query.period || '24h';
+  let filteredHistory = [...systemHistory];
+  
+  const now = Date.now();
+  if (period === '24h') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 24 * 60 * 60 * 1000);
+  } else if (period === '7d') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 7 * 24 * 60 * 60 * 1000);
+  } else if (period === '30d') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 30 * 24 * 60 * 60 * 1000);
+  }
+  
+  res.json(filteredHistory);
+});
+
+// Nouvelle route pour l'historique du site web
+app.get('/api/history/website', (req, res) => {
+  // Filtrer selon la période demandée
+  const period = req.query.period || '24h';
+  let filteredHistory = [...websiteHistory];
+  
+  const now = Date.now();
+  if (period === '24h') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 24 * 60 * 60 * 1000);
+  } else if (period === '7d') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 7 * 24 * 60 * 60 * 1000);
+  } else if (period === '30d') {
+    filteredHistory = filteredHistory.filter(entry => now - entry.timestamp < 30 * 24 * 60 * 60 * 1000);
+  }
+  
+  res.json(filteredHistory);
+});
+
 // WebSocket pour mises à jour en temps réel
 io.on('connection', (socket) => {
   console.log('Client connecté avec ID:', socket.id);
+  
+  // Envoyer l'historique immédiatement à la connexion
+  socket.emit('systemHistory', systemHistory);
+  socket.emit('websiteHistory', websiteHistory);
   
   let containersInterval;
   let systemStatsInterval;
@@ -256,13 +358,15 @@ io.on('connection', (socket) => {
       const websiteStatus = await checkWebsiteStatus();
       const httpsActive = await checkHttpsStatus();
       
-      socket.emit('systemStats', {
+      const systemData = {
         ...stats,
         website: {
           ...websiteStatus,
           https: httpsActive
         }
-      });
+      };
+      
+      socket.emit('systemStats', systemData);
       
       console.log('Données initiales envoyées au client', socket.id);
     } catch (error) {
@@ -295,8 +399,33 @@ io.on('connection', (socket) => {
         }
       };
       
-      console.log('Envoi des données système:', JSON.stringify(systemData).substring(0, 200) + '...');
       socket.emit('systemStats', systemData);
+      
+      // Ajout à l'historique toutes les 5 minutes
+      const now = Date.now();
+      if (systemHistory.length === 0 || (now - systemHistory[systemHistory.length - 1].timestamp) >= 5 * 60 * 1000) {
+        // Historique du système
+        systemHistory.push({
+          timestamp: now,
+          cpu: Math.min(Math.round((stats.loadAvg[0] / stats.cpuCount) * 100), 100),
+          memory: Math.round(((stats.totalMemory - stats.freeMemory) / stats.totalMemory) * 100),
+          uptime: stats.uptime
+        });
+        
+        // Historique du site web
+        websiteHistory.push({
+          timestamp: now,
+          status: websiteStatus.status,
+          https: httpsActive
+        });
+        
+        // Sauvegarde dans les fichiers
+        saveHistory();
+        
+        // Envoyer l'historique mis à jour
+        io.emit('systemHistory', systemHistory);
+        io.emit('websiteHistory', websiteHistory);
+      }
     } catch (error) {
       console.error('Erreur WebSocket (systemStats):', error);
     }
@@ -313,6 +442,68 @@ io.on('connection', (socket) => {
 // Route par défaut (renvoie l'interface frontend)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Route pour démarrer un container
+app.post('/api/containers/:id/start', verifyApiKey, async (req, res) => {
+  try {
+    const containerId = req.params.id;
+    console.log(`Démarrage du container ${containerId}`);
+    
+    const container = docker.getContainer(containerId);
+    await container.start();
+    
+    res.json({ success: true, action: 'start', id: containerId });
+  } catch (error) {
+    console.error(`Erreur lors du démarrage du container ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route pour arrêter un container
+app.post('/api/containers/:id/stop', verifyApiKey, async (req, res) => {
+  try {
+    const containerId = req.params.id;
+    console.log(`Arrêt du container ${containerId}`);
+    
+    const container = docker.getContainer(containerId);
+    await container.stop();
+    
+    res.json({ success: true, action: 'stop', id: containerId });
+  } catch (error) {
+    console.error(`Erreur lors de l'arrêt du container ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route pour redémarrer un container
+app.post('/api/containers/:id/restart', verifyApiKey, async (req, res) => {
+  try {
+    const containerId = req.params.id;
+    console.log(`Redémarrage du container ${containerId}`);
+    
+    const container = docker.getContainer(containerId);
+    await container.restart();
+    
+    res.json({ success: true, action: 'restart', id: containerId });
+  } catch (error) {
+    console.error(`Erreur lors du redémarrage du container ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route pour récupérer des informations détaillées sur un container
+app.get('/api/containers/:id/info', async (req, res) => {
+  try {
+    const containerId = req.params.id;
+    const container = docker.getContainer(containerId);
+    const info = await container.inspect();
+    
+    res.json(info);
+  } catch (error) {
+    console.error(`Erreur lors de la récupération des infos du container ${req.params.id}:`, error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Démarrage du serveur
