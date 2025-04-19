@@ -932,6 +932,16 @@ socket.on('systemStats', function(data) {
   const platformElement = document.getElementById('system-platform');
   if (platformElement) platformElement.textContent = data.platform;
   
+  // Corrections pour le bloc serveur
+  const hostnameValueElement = document.getElementById('hostname');
+  if (hostnameValueElement) hostnameValueElement.textContent = data.hostname;
+  
+  const platformValueElement = document.getElementById('platform');
+  if (platformValueElement) platformValueElement.textContent = data.platform;
+  
+  const uptimeValueElement = document.getElementById('uptime-value');
+  if (uptimeValueElement) uptimeValueElement.textContent = formatUptime(data.uptime);
+  
   const cpuCoresElement = document.getElementById('cpu-cores');
   if (cpuCoresElement) cpuCoresElement.textContent = data.cpuCount;
   
