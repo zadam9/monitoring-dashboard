@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# 📦 Installation de curl avant npm install
+RUN apk add --no-cache curl
+
 # Copie des fichiers de dépendances
 COPY package*.json ./
 
@@ -15,4 +18,4 @@ COPY . .
 EXPOSE 8080
 
 # Démarrage de l'application
-CMD ["npm", "start"] 
+CMD ["npm", "start"]
