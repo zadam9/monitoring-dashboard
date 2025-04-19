@@ -166,11 +166,20 @@ function updateContainersList(containers) {
   // On sauvegarde d'abord le container sélectionné
   containerSelector.innerHTML = '<option value="">Sélectionner un container</option>';
   
+  // Variable pour suivre si nous devons charger le premier conteneur
+  let shouldLoadFirstContainer = !currentSelectedValue;
+  let firstContainerId = null;
+  
   // Ajouter les containers à la liste
-  containers.forEach(container => {
+  containers.forEach((container, index) => {
     // Ajouter le container à la liste visuelle
     const containerItem = document.createElement('div');
     containerItem.classList.add('container-item');
+    
+    // Sauvegarder l'ID du premier container si c'est le premier de la liste
+    if (index === 0) {
+      firstContainerId = container.id;
+    }
     
     // Déterminer la classe CSS du statut
     let statusClass = 'status-created';
@@ -192,8 +201,10 @@ function updateContainersList(containers) {
     
     containerItem.innerHTML = `
       <div class="container-status ${statusClass}">${container.state}</div>
-      <div class="container-name">${container.name}</div>
-      <div class="container-id">${container.id}</div>
+      <div class="container-info">
+        <div class="container-name">${container.name}</div>
+        <div class="container-id">ID: ${container.id}</div>
+      </div>
       <div class="container-image">${container.image}</div>
       <div class="container-ports">${portsHTML}</div>
     `;
@@ -208,10 +219,17 @@ function updateContainersList(containers) {
     // Si c'était le container sélectionné, le resélectionner
     if (container.id === currentSelectedValue) {
       option.selected = true;
+      shouldLoadFirstContainer = false;
     }
     
     containerSelector.appendChild(option);
   });
+  
+  // Si aucun container n'était précédemment sélectionné, sélectionner et charger le premier
+  if (shouldLoadFirstContainer && firstContainerId) {
+    containerSelector.value = firstContainerId;
+    fetchContainerLogs(firstContainerId);
+  }
 }
 
 // Récupérer les logs d'un container
@@ -237,7 +255,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Écouteur pour la sélection du container
   const containerSelector = document.getElementById('container-selector');
   containerSelector.addEventListener('change', (e) => {
-    fetchContainerLogs(e.target.value);
+    if (e.target.value) {
+      fetchContainerLogs(e.target.value);
+    }
   });
   
   // Écouteur pour le bouton de rafraîchissement des logs
@@ -245,6 +265,28 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshLogsButton.addEventListener('click', () => {
     fetchContainerLogs(containerSelector.value);
   });
+
+  // Ajout d'un bouton pour copier les logs
+  const logsOutput = document.getElementById('logs-output');
+  const copyButton = document.createElement('button');
+  copyButton.id = 'copy-logs';
+  copyButton.innerHTML = '<i class="fas fa-copy"></i> Copier les logs';
+  copyButton.addEventListener('click', () => {
+    navigator.clipboard.writeText(logsOutput.textContent)
+      .then(() => {
+        const originalText = copyButton.innerHTML;
+        copyButton.innerHTML = '<i class="fas fa-check"></i> Copié!';
+        setTimeout(() => {
+          copyButton.innerHTML = originalText;
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Erreur lors de la copie:', err);
+      });
+  });
+  
+  // Ajouter le bouton à côté du bouton de rafraîchissement
+  document.querySelector('.logs-selector').appendChild(copyButton);
 });
 
 // Abonnements WebSocket

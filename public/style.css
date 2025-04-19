@@ -253,16 +253,22 @@ h1 {
   color: var(--warning-color);
 }
 
+.container-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .container-name {
   font-weight: bold;
   color: var(--secondary-color);
-  flex: 1;
+  font-size: 1.1rem;
 }
 
 .container-id {
   font-family: monospace;
   color: #666;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .container-image {
@@ -334,6 +340,33 @@ h1 {
   margin-bottom: 15px;
 }
 
+button#refresh-logs,
+button#copy-logs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button#refresh-logs:hover,
+button#copy-logs:hover {
+  background-color: #0a91c2;
+}
+
+button#copy-logs {
+  background-color: var(--secondary-color);
+}
+
+button#copy-logs:hover {
+  background-color: #304770;
+}
+
 select {
   padding: 8px 15px;
   border-radius: var(--border-radius);
@@ -341,23 +374,6 @@ select {
   flex: 1;
   background-color: var(--card-bg);
   color: var(--text-color);
-}
-
-button {
-  padding: 8px 15px;
-  border-radius: var(--border-radius);
-  border: none;
-  background-color: var(--primary-color);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: var(--transition);
-}
-
-button:hover {
-  background-color: var(--accent-color);
 }
 
 .logs-container {

@@ -96,7 +96,7 @@ async function checkWebsiteStatus() {
 // Vérifier si HTTPS est actif
 async function checkHttpsStatus() {
   return new Promise((resolve) => {
-    exec('curl -s --head https://localhost', (error, stdout, stderr) => {
+    exec('curl -s --head https://aitalla.cloud', (error, stdout, stderr) => {
       resolve(!error);
     });
   });
