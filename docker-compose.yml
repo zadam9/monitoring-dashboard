@@ -5,10 +5,15 @@ services:
     build: .
     container_name: dashboard
     restart: unless-stopped
+    privileged: true  # Droits étendus pour accéder aux informations système
     ports:
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /etc:/host/etc:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/log:/host/var/log:ro
     environment:
       - NODE_ENV=production
       - PORT=8080
