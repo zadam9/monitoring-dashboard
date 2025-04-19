@@ -75,8 +75,9 @@ async function getContainerStats(containerId) {
 // Vérifier si le site principal est up
 async function checkWebsiteStatus() {
   return new Promise((resolve) => {
-    exec('curl -s --head http://localhost', (error, stdout, stderr) => {
+    exec('curl -s --head https://aitalla.cloud', (error, stdout, stderr) => {
       if (error) {
+        console.error('Erreur lors de la vérification du site:', error);
         resolve({ status: 'DOWN', statusCode: null });
         return;
       }

@@ -1,91 +1,72 @@
 # LaborEssence - Dashboard de Monitoring Docker
 
-Un dashboard de monitoring en temps réel pour superviser les containers Docker et les ressources système sur une VM AWS.
+Un tableau de bord de monitoring en temps réel pour surveiller vos containers Docker, les ressources système et les statuts des sites web.
 
-![LaborEssence Dashboard](https://i.imgur.com/placeholder-image.png)
+![Dashboard Screenshot](https://via.placeholder.com/800x400?text=LaborEssence+Dashboard)
 
 ## Fonctionnalités
 
-- 📊 Visualisation en temps réel des containers Docker
-- 📈 Suivi des ressources système (RAM, CPU, uptime)
-- 📋 Consultation des logs Docker (stdout/stderr)
-- 🔒 Vérification du statut HTTPS
-- 🔄 Actualisation automatique via WebSockets
-
-## Technologies utilisées
-
-- **Frontend**: HTML, CSS, JavaScript (Vanilla)
-  - Chart.js pour les graphiques
-  - Socket.io pour les mises à jour en temps réel
-- **Backend**: Node.js avec Express
-  - Dockerode pour l'interaction avec l'API Docker
-  - Socket.io pour les WebSockets
-- **Déploiement**: Docker, GitHub Actions
+- 📊 **Monitoring en temps réel** : Suivi des ressources système (CPU, RAM, uptime)
+- 🐳 **Gestion des containers Docker** : Liste des containers avec états et informations détaillées
+- 📝 **Accès aux logs** : Visualisation et copie des logs de chaque container
+- 🌐 **Statut des sites web** : Vérification de l'activité de vos services web et HTTPS
+- 📈 **Graphiques** : Visualisation graphique de l'utilisation des ressources
+- 🌓 **Mode sombre/clair** : Interface adaptable selon vos préférences
+- ⚠️ **Système d'alertes** : Notifications en cas d'utilisation excessive des ressources
+- 📤 **Exportation de rapports** : Génération de rapports sur l'état actuel du système
 
 ## Prérequis
 
-- Docker et Docker Compose
-- Node.js 14+
-- Un serveur avec accès à l'API Docker
+- Node.js (v14 ou supérieur)
+- Docker installé et configuré
+- Un serveur Linux, macOS ou Windows avec Docker Engine
 
-## Installation locale
+## Installation
 
-```bash
-# Cloner le dépôt
-git clone https://github.com/votre-utilisateur/monitoring-dashboard.git
-cd monitoring-dashboard
+1. Clonez le dépôt :
+   ```
+   git clone https://github.com/votre-username/monitoring-dashboard.git
+   cd monitoring-dashboard
+   ```
 
-# Installer les dépendances
-npm install
+2. Installez les dépendances :
+   ```
+   npm install
+   ```
 
-# Démarrer en mode développement
-npm run dev
-```
+3. Démarrez l'application :
+   ```
+   npm start
+   ```
+   
+   Ou utilisez Docker :
+   ```
+   docker-compose up -d
+   ```
+
+4. Accédez au dashboard dans votre navigateur :
+   ```
+   http://localhost:8080
+   ```
 
 ## Déploiement
 
-### Avec Docker Compose
+Ce projet est configuré pour un déploiement automatique via CI/CD. À chaque push sur la branche principale, le système redéploie automatiquement l'application.
 
-```bash
-# Construire et démarrer le container
-docker-compose up -d
+## Configuration
 
-# Vérifier que le container fonctionne
-docker ps
-```
+Vous pouvez personnaliser le dashboard en modifiant les variables d'environnement :
 
-### Déploiement manuel
+- `PORT` : Port d'écoute du serveur (8080 par défaut)
+- `TARGET_WEBSITE` : Site à surveiller (aitalla.cloud par défaut)
 
-```bash
-# Construire l'image Docker
-docker build -t dashboard .
+## Développement
 
-# Lancer le container
-docker run -d -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock --name dashboard dashboard
-```
+- `npm run dev` : Démarrer en mode développement avec hot-reload
+- `npm test` : Exécuter les tests
+- `npm run build` : Construire pour la production
 
-## Utilisation
-
-Accédez au dashboard via http://[IP-SERVEUR]:8080
-
-## Structure du projet
-
-```
-monitoring-dashboard/
-├── public/               # Assets frontend
-│   ├── index.html        # Page HTML principale
-│   ├── style.css         # Styles CSS
-│   └── script.js         # JavaScript frontend
-├── src/
-│   └── server.js         # API backend Express
-├── Dockerfile            # Configuration Docker
-├── docker-compose.yml    # Configuration Docker Compose
-├── package.json          # Dépendances Node.js
-├── .github/workflows/    # GitHub Actions CI/CD
-└── README.md
-```
-
-## Contribuer
+## Contribution
 
 Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou proposer une pull request.
 
@@ -93,6 +74,6 @@ Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou pr
 
 [MIT](LICENSE)
 
----
+## Auteur
 
-Développé par Adam | [Github](https://github.com/zadam9) 
+Créé avec ❤️ par Adam 
