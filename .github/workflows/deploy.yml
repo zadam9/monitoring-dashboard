@@ -8,33 +8,40 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      
+
     - name: Set up SSH
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        
+
     - name: Add host key
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-        
+
     - name: Deploy to server
       env:
         SSH_HOST: ${{ secrets.SSH_HOST }}
         SSH_USER: ${{ secrets.SSH_USER }}
       run: |
-        ssh $SSH_USER@$SSH_HOST "cd ~/monitoring-dashboard && git pull"
-        ssh $SSH_USER@$SSH_HOST "cd ~/monitoring-dashboard && docker-compose down"
-        ssh $SSH_USER@$SSH_HOST "cd ~/monitoring-dashboard && docker-compose build --no-cache"
-        ssh $SSH_USER@$SSH_HOST "cd ~/monitoring-dashboard && docker-compose up -d"
-        
+        ssh $SSH_USER@$SSH_HOST << 'EOF'
+          set -e
+          cd ~/monitoring-dashboard
+          git pull
+          docker-compose down
+          docker image prune -f
+          docker-compose up -d --build --force-recreate
+        EOF
+
     - name: Verify deployment
+      env:
+        SSH_HOST: ${{ secrets.SSH_HOST }}
+        SSH_USER: ${{ secrets.SSH_USER }}
       run: |
         echo "Waiting for service to start..."
         sleep 10
-        ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "docker ps | grep dashboard" 
+        ssh $SSH_USER@$SSH_HOST "docker ps | grep dashboard"
