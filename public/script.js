@@ -287,7 +287,143 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Ajouter le bouton à côté du bouton de rafraîchissement
   document.querySelector('.logs-selector').appendChild(copyButton);
+  
+  // Ajouter un bouton pour exporter le rapport
+  const exportButton = document.createElement('button');
+  exportButton.id = 'export-report';
+  exportButton.innerHTML = '<i class="fas fa-file-export"></i> Exporter';
+  exportButton.addEventListener('click', exportSystemReport);
+  document.querySelector('.logs-selector').appendChild(exportButton);
+
+  // Gestion du thème
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+  
+  // Vérifier si un thème est enregistré dans localStorage
+  const currentTheme = localStorage.getItem('theme');
+  if (currentTheme) {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    if (currentTheme === 'dark') {
+      toggleSwitch.checked = true;
+    }
+  }
+  
+  // Fonction de changement de thème
+  function switchTheme(e) {
+    if (e.target.checked) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('theme', 'light');
+    }
+  }
+  
+  toggleSwitch.addEventListener('change', switchTheme, false);
 });
+
+// Fonction pour exporter le rapport système
+function exportSystemReport() {
+  // Récupérer les données actuelles du système
+  const hostname = document.getElementById('hostname').textContent;
+  const platform = document.getElementById('platform').textContent;
+  const uptime = document.getElementById('system-uptime').textContent;
+  const cpuUsage = document.getElementById('cpu-usage').textContent;
+  const memoryUsage = document.getElementById('memory-usage').textContent;
+  const websiteStatus = document.getElementById('site-status-indicator').textContent;
+  const httpsStatus = document.getElementById('https-status').textContent;
+  
+  // Nombre de containers
+  const activeContainers = document.getElementById('active-containers').textContent;
+  const totalContainers = document.getElementById('total-containers').textContent;
+  
+  // Créer le contenu du rapport
+  const currentDate = new Date().toLocaleString();
+  let reportContent = `# Rapport de Monitoring - ${currentDate}\n\n`;
+  
+  reportContent += `## Informations Système\n`;
+  reportContent += `- Hostname: ${hostname}\n`;
+  reportContent += `- Plateforme: ${platform}\n`;
+  reportContent += `- ${uptime}\n\n`;
+  
+  reportContent += `## Ressources\n`;
+  reportContent += `- CPU: ${cpuUsage}\n`;
+  reportContent += `- Mémoire: ${memoryUsage}\n\n`;
+  
+  reportContent += `## Site Web\n`;
+  reportContent += `- Statut: ${websiteStatus}\n`;
+  reportContent += `- HTTPS: ${httpsStatus}\n\n`;
+  
+  reportContent += `## Containers Docker\n`;
+  reportContent += `- Actifs: ${activeContainers} / ${totalContainers} total\n\n`;
+  
+  // Créer un élément blob et un lien de téléchargement
+  const blob = new Blob([reportContent], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = `monitoring-report-${new Date().toISOString().split('T')[0]}.md`;
+  
+  // Simuler un clic pour télécharger
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  
+  // Nettoyage
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(url);
+}
+
+// Système d'alertes
+function checkAndShowAlerts(cpuUsage, memoryUsage) {
+  const cpuThreshold = 80;
+  const memoryThreshold = 80;
+  
+  if (cpuUsage > cpuThreshold) {
+    showAlert(`Alerte: Utilisation CPU élevée (${cpuUsage.toFixed(2)}%)`, 'danger');
+  }
+  
+  if (memoryUsage > memoryThreshold) {
+    showAlert(`Alerte: Utilisation mémoire élevée (${memoryUsage.toFixed(2)}%)`, 'danger');
+  }
+}
+
+function showAlert(message, type) {
+  // Créer l'élément d'alerte s'il n'existe pas déjà
+  let alertsContainer = document.getElementById('alerts-container');
+  
+  if (!alertsContainer) {
+    alertsContainer = document.createElement('div');
+    alertsContainer.id = 'alerts-container';
+    document.querySelector('.dashboard').insertBefore(alertsContainer, document.querySelector('header').nextSibling);
+  }
+  
+  // Créer la notification
+  const alertElement = document.createElement('div');
+  alertElement.className = `alert alert-${type}`;
+  alertElement.innerHTML = `
+    <div class="alert-content">
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>${message}</span>
+    </div>
+    <button class="alert-close"><i class="fas fa-times"></i></button>
+  `;
+  
+  // Ajouter la fonctionnalité de fermeture
+  alertElement.querySelector('.alert-close').addEventListener('click', () => {
+    alertElement.remove();
+  });
+  
+  // Ajouter au container et configurer l'auto-destruction
+  alertsContainer.appendChild(alertElement);
+  
+  // Auto-fermeture après 10 secondes
+  setTimeout(() => {
+    if (alertElement.parentNode) {
+      alertElement.remove();
+    }
+  }, 10000);
+}
 
 // Abonnements WebSocket
 socket.on('connect', () => {
@@ -320,6 +456,9 @@ socket.on('systemStats', (stats) => {
   
   // Mise à jour des graphiques
   updateCharts(cpuUsage, memoryUsage);
+  
+  // Vérifier les alertes
+  checkAndShowAlerts(cpuUsage, memoryUsage);
   
   // Mise à jour du statut du site web
   const siteStatusIndicator = document.getElementById('site-status-indicator');

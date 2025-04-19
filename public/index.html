@@ -21,8 +21,19 @@
         <h1>LaborEssence</h1>
       </div>
       <div class="subtitle">Dashboard de Monitoring Docker</div>
-      <div class="system-status" id="system-uptime">
-        Uptime: Chargement...
+      <div class="system-info">
+        <div class="system-status" id="system-uptime">
+          Uptime: Chargement...
+        </div>
+        <div class="theme-switch-wrapper">
+          <label class="theme-switch" for="checkbox">
+            <input type="checkbox" id="checkbox" />
+            <div class="slider round">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+            </div>
+          </label>
+        </div>
       </div>
     </header>
     
@@ -73,7 +84,9 @@
           <i class="fas fa-globe"></i>
         </div>
         <div class="card-content">
-          <h3>Site Principal</h3>
+          <h3>
+            <a href="https://aitalla.cloud" target="_blank" class="site-link">Site Principal <i class="fas fa-external-link-alt"></i></a>
+          </h3>
           <p class="status-indicator" id="site-status-indicator">Chargement...</p>
           <div class="details">
             <p>HTTPS: <span id="https-status">-</span></p>
