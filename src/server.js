@@ -25,15 +25,31 @@ const PORT = process.env.PORT || 8080;
 
 // Fonction pour récupérer les statistiques système
 async function getSystemStats() {
-  return {
-    uptime: os.uptime(),
-    hostname: os.hostname(),
-    platform: os.platform(),
-    cpuCount: os.cpus().length,
-    totalMemory: os.totalmem(),
-    freeMemory: os.freemem(),
-    loadAvg: os.loadavg(),
-  };
+  try {
+    const stats = {
+      uptime: os.uptime(),
+      hostname: os.hostname(),
+      platform: os.platform(),
+      cpuCount: os.cpus().length,
+      totalMemory: os.totalmem(),
+      freeMemory: os.freemem(),
+      loadAvg: os.loadavg(),
+    };
+    
+    console.log('Stats système récupérées:', JSON.stringify(stats));
+    return stats;
+  } catch (error) {
+    console.error('Erreur lors de la récupération des stats système:', error);
+    return {
+      uptime: 0,
+      hostname: 'Inconnu',
+      platform: 'Inconnu',
+      cpuCount: 0,
+      totalMemory: 0,
+      freeMemory: 0,
+      loadAvg: [0, 0, 0],
+    };
+  }
 }
 
 // Récupérer la liste des containers
@@ -183,24 +199,17 @@ app.get('/api/website/status', async (req, res) => {
 
 // WebSocket pour mises à jour en temps réel
 io.on('connection', (socket) => {
-  console.log('Client connecté');
+  console.log('Client connecté avec ID:', socket.id);
   
   let containersInterval;
   let systemStatsInterval;
   
-  // Envoyer les données des containers toutes les 3 secondes
-  containersInterval = setInterval(async () => {
+  // Envoyer les données immédiatement à la connexion
+  (async () => {
     try {
       const containers = await getContainers();
       socket.emit('containers', containers);
-    } catch (error) {
-      console.error('Erreur WebSocket (containers):', error);
-    }
-  }, 5000);
-  
-  // Envoyer les stats système toutes les 2 secondes
-  systemStatsInterval = setInterval(async () => {
-    try {
+      
       const stats = await getSystemStats();
       const websiteStatus = await checkWebsiteStatus();
       const httpsActive = await checkHttpsStatus();
@@ -212,6 +221,40 @@ io.on('connection', (socket) => {
           https: httpsActive
         }
       });
+      
+      console.log('Données initiales envoyées au client', socket.id);
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi des données initiales:', error);
+    }
+  })();
+  
+  // Envoyer les données des containers toutes les 5 secondes
+  containersInterval = setInterval(async () => {
+    try {
+      const containers = await getContainers();
+      socket.emit('containers', containers);
+    } catch (error) {
+      console.error('Erreur WebSocket (containers):', error);
+    }
+  }, 5000);
+  
+  // Envoyer les stats système toutes les 5 secondes
+  systemStatsInterval = setInterval(async () => {
+    try {
+      const stats = await getSystemStats();
+      const websiteStatus = await checkWebsiteStatus();
+      const httpsActive = await checkHttpsStatus();
+      
+      const systemData = {
+        ...stats,
+        website: {
+          ...websiteStatus,
+          https: httpsActive
+        }
+      };
+      
+      console.log('Envoi des données système:', JSON.stringify(systemData).substring(0, 200) + '...');
+      socket.emit('systemStats', systemData);
     } catch (error) {
       console.error('Erreur WebSocket (systemStats):', error);
     }
@@ -219,7 +262,7 @@ io.on('connection', (socket) => {
   
   // Nettoyage à la déconnexion
   socket.on('disconnect', () => {
-    console.log('Client déconnecté');
+    console.log('Client déconnecté:', socket.id);
     clearInterval(containersInterval);
     clearInterval(systemStatsInterval);
   });

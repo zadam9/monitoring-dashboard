@@ -625,47 +625,79 @@ socket.on('disconnect', () => {
   console.log('Déconnecté du serveur');
 });
 
-socket.on('systemStats', (stats) => {
+// Réception des mises à jour du système
+socket.on('systemStats', function(data) {
+  console.log('Données système reçues:', data);
+  
   // Mise à jour de l'uptime
-  document.getElementById('system-uptime').textContent = `Uptime: ${formatUptime(stats.uptime)}`;
-  
-  // Mise à jour des informations serveur
-  document.getElementById('hostname').textContent = stats.hostname;
-  document.getElementById('platform').textContent = stats.platform;
-  
-  // Calcul et affichage du pourcentage d'utilisation mémoire
-  const memoryUsage = 100 - (stats.freeMemory / stats.totalMemory * 100);
-  document.getElementById('memory-usage-bar').style.width = `${memoryUsage}%`;
-  document.getElementById('memory-usage').textContent = 
-    `${memoryUsage.toFixed(2)}% (${formatMemorySize(stats.totalMemory - stats.freeMemory)} / ${formatMemorySize(stats.totalMemory)})`;
-  
-  // Calcul et affichage du pourcentage d'utilisation CPU
-  const cpuUsage = stats.loadAvg[0] * 100 / stats.cpuCount;
-  document.getElementById('cpu-usage-bar').style.width = `${cpuUsage > 100 ? 100 : cpuUsage}%`;
-  document.getElementById('cpu-usage').textContent = 
-    `${cpuUsage.toFixed(2)}% (${stats.loadAvg[0].toFixed(2)} load avg, ${stats.cpuCount} cores)`;
-  
-  // Mise à jour des graphiques
-  updateCharts(cpuUsage, memoryUsage);
-  
-  // Vérifier les alertes
-  checkAndShowAlerts(cpuUsage, memoryUsage);
-  
-  // Mise à jour du statut du site web
-  const siteStatusIndicator = document.getElementById('site-status-indicator');
-  const httpsStatus = document.getElementById('https-status');
-  const statusCode = document.getElementById('status-code');
-  
-  if (stats.website) {
-    siteStatusIndicator.textContent = stats.website.status;
-    siteStatusIndicator.className = 'status-indicator';
-    siteStatusIndicator.classList.add(stats.website.status === 'UP' ? 'status-up' : 'status-down');
-    
-    httpsStatus.textContent = stats.website.https ? 'Actif' : 'Inactif';
-    httpsStatus.className = stats.website.https ? 'status-up' : 'status-down';
-    
-    statusCode.textContent = stats.website.statusCode || 'N/A';
+  const uptimeElement = document.getElementById('system-uptime');
+  if (uptimeElement) {
+    uptimeElement.innerHTML = `<i class="fas fa-clock"></i> <span>Uptime: ${formatUptime(data.uptime)}</span>`;
   }
+  
+  // Mise à jour des infos serveur
+  const hostnameElement = document.getElementById('system-hostname');
+  if (hostnameElement) hostnameElement.textContent = data.hostname;
+  
+  const platformElement = document.getElementById('system-platform');
+  if (platformElement) platformElement.textContent = data.platform;
+  
+  const cpuCoresElement = document.getElementById('cpu-cores');
+  if (cpuCoresElement) cpuCoresElement.textContent = data.cpuCount;
+  
+  // Calcul de l'utilisation mémoire
+  const memoryUsed = data.totalMemory - data.freeMemory;
+  const memoryPercentage = Math.round((memoryUsed / data.totalMemory) * 100);
+  
+  // Mise à jour des éléments de mémoire
+  const memoryUsedElement = document.getElementById('memory-used');
+  if (memoryUsedElement) memoryUsedElement.textContent = formatMemorySize(memoryUsed);
+  
+  const memoryTotalElement = document.getElementById('memory-total');
+  if (memoryTotalElement) memoryTotalElement.textContent = formatMemorySize(data.totalMemory);
+  
+  const memoryUsageElement = document.getElementById('memory-usage');
+  if (memoryUsageElement) memoryUsageElement.textContent = `${memoryPercentage}%`;
+  
+  const memoryUsageOverviewElement = document.getElementById('memory-usage-overview');
+  if (memoryUsageOverviewElement) memoryUsageOverviewElement.textContent = `${memoryPercentage}% utilisé`;
+  
+  // Calcul et mise à jour de l'utilisation CPU (approximation depuis la charge moyenne)
+  const cpuUsage = Math.min(Math.round((data.loadAvg[0] / data.cpuCount) * 100), 100);
+  
+  const cpuUsageElement = document.getElementById('cpu-usage');
+  if (cpuUsageElement) cpuUsageElement.textContent = `${cpuUsage}%`;
+  
+  const cpuLoadElement = document.getElementById('cpu-load');
+  if (cpuLoadElement) cpuLoadElement.textContent = data.loadAvg[0].toFixed(2);
+  
+  const cpuUsageOverviewElement = document.getElementById('cpu-usage-overview');
+  if (cpuUsageOverviewElement) cpuUsageOverviewElement.textContent = `${cpuUsage}% utilisé`;
+  
+  // Mise à jour du statut du site
+  if (data.website) {
+    const siteStatusElement = document.getElementById('site-status-overview');
+    if (siteStatusElement) {
+      const statusText = data.website.status === 'UP' ? 
+        `<span class="status-up">Opérationnel</span>` : 
+        `<span class="status-down">Hors service</span>`;
+      siteStatusElement.innerHTML = statusText;
+    }
+    
+    const httpsIndicator = document.getElementById('https-indicator');
+    if (httpsIndicator) {
+      httpsIndicator.className = data.website.https ? 'status-up' : 'status-down';
+      httpsIndicator.textContent = data.website.https ? 'Actif' : 'Inactif';
+    }
+  }
+  
+  // Mise à jour des graphiques si définis
+  if (cpuDonutChart && memoryDonutChart) {
+    updateCharts(cpuUsage, memoryPercentage);
+  }
+  
+  // Vérification des alertes
+  checkAndShowAlerts(cpuUsage, memoryPercentage);
 });
 
 socket.on('containers', (containers) => {
