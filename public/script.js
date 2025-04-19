@@ -678,9 +678,14 @@ socket.on('systemStats', function(data) {
   if (data.website) {
     const siteStatusElement = document.getElementById('site-status-overview');
     if (siteStatusElement) {
-      const statusText = data.website.status === 'UP' ? 
-        `<span class="status-up">Opérationnel</span>` : 
-        `<span class="status-down">Hors service</span>`;
+      let statusText = '';
+      if (data.website.status === 'UP') {
+        statusText = `<span class="status-up">Opérationnel</span>`;
+      } else if (data.website.status === 'PARTIAL') {
+        statusText = `<span class="status-partial">Partiellement disponible</span>`;
+      } else {
+        statusText = `<span class="status-down">Hors service</span>`;
+      }
       siteStatusElement.innerHTML = statusText;
     }
     

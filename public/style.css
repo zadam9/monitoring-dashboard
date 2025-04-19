@@ -529,6 +529,10 @@ input:checked + .slider:before {
   color: var(--success-color);
 }
 
+.status-partial {
+  color: var(--warning-color);
+}
+
 .status-down {
   color: var(--danger-color);
 }

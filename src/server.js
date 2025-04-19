@@ -92,29 +92,48 @@ async function getContainerStats(containerId) {
 async function checkWebsiteStatus() {
   return new Promise((resolve) => {
     console.log('Vérification du statut du site aitalla.cloud...');
-    exec('curl -s --head --max-time 5 https://aitalla.cloud', (error, stdout, stderr) => {
+    // Utiliser une requête HTTPS avec un User-Agent valide et un timeout
+    const command = 'curl -s -L --max-time 10 -I -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Dashboard Monitor" https://aitalla.cloud';
+    exec(command, (error, stdout, stderr) => {
       if (error) {
         console.error('Erreur curl lors de la vérification du site:', error.message);
-        // Forcer l'état UP pour le test
-        resolve({ status: 'UP', statusCode: 200, forced: true });
+        // Essayer de faire un ping pour voir si le domaine est accessible
+        exec('ping -n 1 aitalla.cloud', (pingError, pingStdout) => {
+          if (!pingError && pingStdout.includes('TTL=')) {
+            console.log('Le domaine répond au ping, mais pas à HTTPS');
+            resolve({ status: 'PARTIAL', statusCode: null, pingOk: true });
+          } else {
+            console.log('Échec total de connexion au domaine');
+            resolve({ status: 'DOWN', statusCode: null });
+          }
+        });
         return;
       }
       
-      console.log('Réponse curl reçue:', stdout.substring(0, 100) + '...');
-      const statusLine = stdout.split('\n')[0];
-      const statusMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/);
+      console.log('Réponse curl reçue:', stdout.substring(0, 150));
+      
+      // Rechercher n'importe quelle ligne de statut HTTP
+      const statusMatch = stdout.match(/HTTP\/\d(?:\.\d)?\s+(\d+)/i);
       const statusCode = statusMatch ? parseInt(statusMatch[1]) : null;
       
       if (statusCode) {
         console.log('Code de statut détecté:', statusCode);
+        resolve({
+          status: statusCode >= 200 && statusCode < 400 ? 'UP' : 'DOWN',
+          statusCode
+        });
+      } else if (stdout.trim()) {
+        // Si nous avons une réponse mais pas de code de statut, c'est probablement une redirection
+        console.log('Réponse sans code de statut valide, considéré comme UP');
+        resolve({
+          status: 'UP',
+          statusCode: 200,
+          note: 'Réponse sans code HTTP standard'
+        });
       } else {
-        console.log('Aucun code de statut trouvé dans la réponse');
+        console.log('Aucune réponse valide');
+        resolve({ status: 'DOWN', statusCode: null });
       }
-      
-      resolve({
-        status: statusCode && statusCode >= 200 && statusCode < 400 ? 'UP' : 'UP', // Forcer UP
-        statusCode
-      });
     });
   });
 }
@@ -123,25 +142,36 @@ async function checkWebsiteStatus() {
 async function checkHttpsStatus() {
   return new Promise((resolve) => {
     console.log('Vérification du statut HTTPS...');
-    exec('curl -s --head --max-time 5 https://aitalla.cloud', (error, stdout, stderr) => {
+    // Utiliser une requête HTTPS avec un User-Agent valide et un timeout
+    const command = 'curl -s -L --max-time 10 -I -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Dashboard Monitor" https://aitalla.cloud';
+    exec(command, (error, stdout, stderr) => {
       if (error) {
         console.error('Erreur curl lors de la vérification HTTPS:', error.message);
-        // Forcer l'état actif pour le test
+        resolve(false);
+        return;
+      }
+      
+      // Vérifier si la réponse contient un en-tête HTTPS
+      const hasHttpsHeader = stdout.includes('HTTP/') && 
+                            (stdout.includes('X-Served-By') || 
+                             stdout.includes('Strict-Transport-Security') || 
+                             stdout.includes('X-Content-Type-Options'));
+      
+      if (hasHttpsHeader) {
+        console.log('HTTPS détecté via les en-têtes de sécurité');
         resolve(true);
         return;
       }
       
       // Vérifier si la réponse contient une ligne de statut HTTP valide
-      const statusLine = stdout.split('\n')[0];
-      const statusMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/);
+      const statusMatch = stdout.match(/HTTP\/\d(?:\.\d)?\s+(\d+)/i);
       
-      if (statusMatch && parseInt(statusMatch[1]) >= 200 && parseInt(statusMatch[1]) < 400) {
+      if (statusMatch && parseInt(statusMatch[1]) >= 200) {
         console.log('HTTPS actif avec statut:', statusMatch[1]);
         resolve(true);
       } else {
         console.log('HTTPS inactif ou erreur dans la réponse');
-        // Forcer l'état actif pour le test
-        resolve(true);
+        resolve(false);
       }
     });
   });
