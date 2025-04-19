@@ -12,10 +12,11 @@ const appState = {
   animationEnabled: true,
   compactMode: false,
   primaryColor: '#0db7ed',
-  apiKey: localStorage.getItem('api_key') || '',
+  apiKey: 'labordashboard2024', // Clé API pour les appels sécurisés
   currentHistoryPeriod: '24h',
   systemHistory: [],
-  websiteHistory: []
+  websiteHistory: [],
+  securityData: null
 };
 
 // Configuration des graphiques
@@ -478,26 +479,41 @@ function updateHistoryCharts() {
 // Fonction pour charger l'historique depuis le serveur
 async function loadHistory(period = '24h') {
   try {
+    console.log('📣 [DEBUG] Chargement de l\'historique pour la période:', period);
+    const apiBase = window.location.origin;
+    
     // Charger l'historique système
-    const systemResponse = await fetch(`/api/history/system?period=${period}`);
+    const systemResponse = await fetch(`${apiBase}/api/history/system?period=${period}`, {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
+    
     if (!systemResponse.ok) {
-      throw new Error('Erreur lors du chargement de l\'historique système');
+      throw new Error(`Erreur HTTP: ${systemResponse.status}`);
     }
+    
     appState.systemHistory = await systemResponse.json();
+    console.log(`📣 [DEBUG] Historique système chargé: ${appState.systemHistory.length} entrées`);
     
     // Charger l'historique du site web
-    const websiteResponse = await fetch(`/api/history/website?period=${period}`);
+    const websiteResponse = await fetch(`${apiBase}/api/history/website?period=${period}`, {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
+    
     if (!websiteResponse.ok) {
-      throw new Error('Erreur lors du chargement de l\'historique du site web');
+      throw new Error(`Erreur HTTP: ${websiteResponse.status}`);
     }
+    
     appState.websiteHistory = await websiteResponse.json();
+    console.log(`📣 [DEBUG] Historique web chargé: ${appState.websiteHistory.length} entrées`);
     
     // Mettre à jour les graphiques
     updateHistoryCharts();
-    
-    console.log(`Historique chargé pour la période ${period}`);
   } catch (error) {
-    console.error('Erreur lors du chargement de l\'historique:', error);
+    console.error('❌ [ERREUR] lors du chargement de l\'historique:', error);
     showAlert(`Erreur lors du chargement de l'historique: ${error.message}`, 'danger');
   }
 }
@@ -1550,17 +1566,28 @@ function updateSecurityScore(score) {
   document.getElementById('security-summary-text').innerText = summaryText;
 }
 
-// Fonction pour exécuter un audit de sécurité
+// Fonction pour lancer l'audit de sécurité
 async function runSecurityAudit() {
   try {
-    document.getElementById('security-loader').style.display = 'flex';
-    document.getElementById('run-audit-btn').disabled = true;
+    console.log('📣 [DEBUG] Lancement de l\'audit de sécurité - Début');
     
-    const response = await fetch('/api/security/audit', {
+    // Désactiver le bouton et afficher un spinner
+    const auditButton = document.getElementById('run-audit-btn');
+    if (auditButton) {
+      auditButton.disabled = true;
+      auditButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Audit en cours...';
+    }
+    
+    // Ajouter une notification
+    showAlert('Audit de sécurité en cours...', 'info');
+    
+    // Faire l'appel API
+    const apiBase = window.location.origin;
+    const response = await fetch(`${apiBase}/api/security/audit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': 'labordashboard2024'
+        'x-api-key': appState.apiKey
       }
     });
     
@@ -1568,125 +1595,91 @@ async function runSecurityAudit() {
       throw new Error(`Erreur HTTP: ${response.status}`);
     }
     
+    console.log('📣 [DEBUG] Réponse de l\'audit reçue, traitement...');
     const data = await response.json();
+    console.log('📣 [DEBUG] Résultats de l\'audit:', data);
+    
+    // Mettre à jour l'interface avec les résultats
     updateSecurityDashboard(data);
     
-    // Afficher une alerte de succès
-    showAlert('Audit de sécurité terminé avec succès.', 'success');
+    // Réactiver le bouton
+    if (auditButton) {
+      auditButton.disabled = false;
+      auditButton.innerHTML = '<i class="fas fa-shield-alt"></i> Lancer un audit';
+    }
     
+    showAlert('Audit de sécurité terminé avec succès!', 'success');
   } catch (error) {
-    console.error('Erreur lors de l\'audit:', error);
+    console.error('❌ [ERREUR] lors de l\'audit de sécurité:', error);
     showAlert('Erreur lors de l\'audit de sécurité: ' + error.message, 'danger');
     
-    // En cas d'erreur, afficher des données simulées enrichies
-    const simulatedData = {
-      lastAuditTime: new Date().toISOString(),
-      securityScore: 60,
-      openPorts: [
-        { port: 22, service: 'SSH', state: 'open', risk: 'medium' },
-        { port: 80, service: 'HTTP', state: 'open', risk: 'low' },
-        { port: 443, service: 'HTTPS', state: 'open', risk: 'low' },
-        { port: 8080, service: 'HTTP-ALT', state: 'open', risk: 'medium' },
-        { port: 3306, service: 'MySQL', state: 'open', risk: 'medium' }
-      ],
-      rootUsers: [
-        { username: 'root', uid: 0, group: 'root', shell: '/bin/bash' }
-      ],
-      exposedServices: [
-        { name: 'SSH', port: 22, state: 'running', risk: 'medium' },
-        { name: 'NGINX', port: 80, state: 'running', risk: 'low' },
-        { name: 'Docker', port: null, state: 'running', risk: 'low' },
-        { name: 'MySQL', port: 3306, state: 'running', risk: 'medium' }
-      ],
-      vulnerabilities: [
-        { issue: 'Erreur d\'audit', description: 'Impossible de réaliser un audit complet', level: 'high', recommendation: 'Vérifier la configuration du conteneur Docker' },
-        { issue: 'Accès limité', description: 'Le conteneur n\'a pas les permissions nécessaires pour analyser le système hôte', level: 'medium', recommendation: 'Lancer le conteneur avec --privileged et les volumes nécessaires' },
-        { issue: 'MySQL exposé', description: 'Le service MySQL est accessible depuis l\'extérieur', level: 'medium', recommendation: 'Limiter l\'accès à MySQL avec un pare-feu' }
-      ],
-      modifiedFiles: [
-        { name: 'sshd_config', path: '/etc/ssh/sshd_config', mtime: new Date().toISOString(), user: 'root' },
-        { name: 'nginx.conf', path: '/etc/nginx/nginx.conf', mtime: new Date().toISOString(), user: 'root' },
-        { name: 'passwd', path: '/etc/passwd', mtime: new Date().toISOString(), user: 'root' },
-        { name: 'my.cnf', path: '/etc/mysql/my.cnf', mtime: new Date().toISOString(), user: 'root' }
-      ],
-      auditDetails: {
-        timestamp: new Date().toISOString(),
-        systemInfo: {
-          platform: 'linux',
-          hostname: 'aws-instance',
-          cpus: 2,
-          totalMemory: 4294967296,
-          freeMemory: 1073741824,
-          loadAvg: [0.5, 0.7, 0.8]
-        },
-        processAudit: [
-          { user: 'root', pid: '1', cpu: 0.1, mem: 0.5, command: '/sbin/init' },
-          { user: 'mysql', pid: '1234', cpu: 1.5, mem: 15.2, command: 'mysqld' },
-          { user: 'www-data', pid: '2345', cpu: 0.8, mem: 4.5, command: 'nginx: worker process' }
-        ],
-        networkAudit: [
-          { port: 22, state: 'open', service: 'ssh', version: 'OpenSSH 8.2' },
-          { port: 80, state: 'open', service: 'http', version: 'nginx 1.18.0' },
-          { port: 3306, state: 'open', service: 'mysql', version: 'MySQL 8.0.27' }
-        ],
-        userAudit: [
-          { username: 'ubuntu', tty: 'pts/0', date: 'May 10 14:23', from: '192.168.1.5' }
-        ]
-      }
-    };
+    // Réactiver le bouton
+    const auditButton = document.getElementById('run-audit-btn');
+    if (auditButton) {
+      auditButton.disabled = false;
+      auditButton.innerHTML = '<i class="fas fa-shield-alt"></i> Lancer un audit';
+    }
     
-    updateSecurityDashboard(simulatedData);
-  } finally {
-    document.getElementById('security-loader').style.display = 'none';
-    document.getElementById('run-audit-btn').disabled = false;
+    // Afficher l'état d'erreur dans l'interface
+    document.getElementById('last-audit-time').innerText = 'Échec de l\'audit';
+    document.getElementById('security-score-value').innerText = 'N/A';
+    document.getElementById('security-summary-text').innerText = 'Impossible de réaliser l\'audit de sécurité. Vérifiez les logs.';
+    
+    // Vider tous les tableaux avec message d'erreur
+    const tables = ['open-ports-table', 'root-users-table', 'exposed-services-table', 'vulnerabilities-table', 'modified-files-table'];
+    tables.forEach(tableId => {
+      const table = document.getElementById(tableId);
+      if (table) {
+        const tbody = table.querySelector('tbody');
+        if (tbody) {
+          tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Erreur lors de l\'audit</td></tr>';
+        }
+      }
+    });
   }
 }
 
 // Fonction pour récupérer les données de sécurité
 async function fetchSecurityData() {
   try {
-    const response = await fetch('/api/security/data');
+    console.log('📣 [DEBUG] Appel à fetchSecurityData() - Début');
+    const apiBase = window.location.origin; // Utiliser l'origine du site actuel
+    
+    const response = await fetch(`${apiBase}/api/security/data`, {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
+    
     if (!response.ok) {
       throw new Error(`Erreur HTTP: ${response.status}`);
     }
     
+    console.log('📣 [DEBUG] Données de sécurité reçues, traitement...');
     const data = await response.json();
+    console.log('📣 [DEBUG] Données JSON parsées:', data);
     updateSecurityDashboard(data);
     
   } catch (error) {
-    console.error('Erreur lors du chargement des données de sécurité:', error);
-    showAlert('Erreur lors du chargement des données de sécurité. Utilisation de données de simulation.', 'warning');
+    console.error('❌ [ERREUR] lors du chargement des données de sécurité:', error);
+    showAlert('Erreur lors du chargement des données de sécurité: ' + error.message, 'danger');
     
-    // En cas d'erreur, utiliser des données simulées pour que l'interface continue de fonctionner
-    const simulatedData = {
-      lastAuditTime: new Date().toISOString(),
-      securityScore: 65,
-      openPorts: [
-        { port: 22, service: 'SSH', state: 'open', risk: 'medium' },
-        { port: 80, service: 'HTTP', state: 'open', risk: 'low' },
-        { port: 443, service: 'HTTPS', state: 'open', risk: 'low' },
-        { port: 8080, service: 'HTTP-ALT', state: 'open', risk: 'medium' }
-      ],
-      rootUsers: [
-        { username: 'root', uid: 0, group: 'root', shell: '/bin/bash' }
-      ],
-      exposedServices: [
-        { name: 'SSH', port: 22, state: 'running', risk: 'medium' },
-        { name: 'NGINX', port: 80, state: 'running', risk: 'low' },
-        { name: 'Docker', port: null, state: 'running', risk: 'low' }
-      ],
-      vulnerabilities: [
-        { issue: 'Erreur d\'analyse', description: 'Impossible de collecter les données réelles de sécurité', level: 'medium', recommendation: 'Vérifier la configuration du conteneur Docker' },
-        { issue: 'Accès limité', description: 'Le conteneur n\'a pas les permissions nécessaires pour analyser le système hôte', level: 'medium', recommendation: 'Lancer le conteneur avec --privileged et les volumes nécessaires' }
-      ],
-      modifiedFiles: [
-        { name: 'sshd_config', path: '/etc/ssh/sshd_config', mtime: new Date().toISOString(), user: 'root' },
-        { name: 'nginx.conf', path: '/etc/nginx/nginx.conf', mtime: new Date().toISOString(), user: 'root' },
-        { name: 'passwd', path: '/etc/passwd', mtime: new Date().toISOString(), user: 'root' }
-      ]
-    };
+    // Afficher l'état d'erreur dans l'interface
+    document.getElementById('last-audit-time').innerText = 'Échec de l\'audit';
+    document.getElementById('security-score-value').innerText = 'N/A';
+    document.getElementById('security-summary-text').innerText = 'Impossible de charger les données de sécurité. Vérifiez les logs.';
     
-    updateSecurityDashboard(simulatedData);
+    // Vider tous les tableaux avec message d'erreur
+    const tables = ['open-ports-table', 'root-users-table', 'exposed-services-table', 'vulnerabilities-table', 'modified-files-table'];
+    tables.forEach(tableId => {
+      const table = document.getElementById(tableId);
+      if (table) {
+        const tbody = table.querySelector('tbody');
+        if (tbody) {
+          tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Erreur lors du chargement des données</td></tr>';
+        }
+      }
+    });
   }
 }
 
@@ -2189,4 +2182,60 @@ function exportSecurityReport() {
   URL.revokeObjectURL(url);
   
   showAlert('Rapport de sécurité exporté avec succès', 'success');
-} 
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('📣 [DEBUG] Initialisation de l\'application...');
+  
+  // Initialiser les graphiques
+  initAllCharts();
+  
+  // Chargement initial des données
+  fetchSecurityData();
+  loadHistory(appState.currentHistoryPeriod);
+  
+  // Appliquer le thème sauvegardé
+  switchTheme(appState.selectedTheme);
+  
+  // Activer la section par défaut
+  switchSection(appState.activeSection);
+  
+  // Gestionnaires d'événements
+  document.querySelectorAll('.sidebar-nav a').forEach(link => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      const sectionId = link.getAttribute('href').substring(1); // Enlever le #
+      switchSection(sectionId);
+      
+      // Fermer la sidebar sur mobile après la navigation
+      if (window.innerWidth < 768) {
+        document.querySelector('.sidebar').classList.add('collapsed');
+      }
+    });
+  });
+  
+  // Gestionnaire pour le toggle du menu
+  document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+  
+  // Gestionnaire pour les boutons de période d'historique
+  document.querySelectorAll('.history-period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const period = btn.getAttribute('data-period');
+      changeHistoryPeriod(period);
+    });
+  });
+  
+  // Gestionnaire pour le toggle du thème
+  document.getElementById('checkbox').addEventListener('change', (e) => {
+    switchTheme(e.target.checked ? 'dark' : 'light');
+  });
+  
+  // Gestionnaire pour le bouton d'audit de sécurité
+  document.getElementById('run-audit-btn').addEventListener('click', runSecurityAudit);
+  
+  // Lancer le rafraîchissement automatique des données toutes les 30 secondes
+  setInterval(fetchSecurityData, 30000);
+  
+  console.log('📣 [DEBUG] Initialisation terminée');
+}); 
