@@ -15,6 +15,27 @@ Un tableau de bord de monitoring en temps réel pour surveiller vos containers D
 - ⚠️ **Système d'alertes** : Notifications en cas d'utilisation excessive des ressources
 - 📤 **Exportation de rapports** : Génération de rapports sur l'état actuel du système
 
+## Designs disponibles
+
+Le projet propose deux designs d'interface différents :
+
+1. **Design classique** (branche `main`) - Interface verticale traditionnelle, simple et fonctionnelle
+2. **Design moderne** (branche `redesign-modern`) - Interface avec sidebar, charts améliorés et fonctionnalités supplémentaires
+
+### Comment changer de design
+
+Pour basculer entre les deux designs, utilisez les commandes Git suivantes :
+
+```bash
+# Pour le design classique
+git checkout main
+
+# Pour le design moderne
+git checkout redesign-modern
+```
+
+Ensuite, redémarrez l'application pour appliquer le changement.
+
 ## Prérequis
 
 - Node.js (v14 ou supérieur)
@@ -29,12 +50,18 @@ Un tableau de bord de monitoring en temps réel pour surveiller vos containers D
    cd monitoring-dashboard
    ```
 
-2. Installez les dépendances :
+2. Choisissez le design souhaité :
+   ```
+   git checkout main     # Pour le design classique
+   git checkout redesign-modern  # Pour le design moderne
+   ```
+
+3. Installez les dépendances :
    ```
    npm install
    ```
 
-3. Démarrez l'application :
+4. Démarrez l'application :
    ```
    npm start
    ```
@@ -44,7 +71,7 @@ Un tableau de bord de monitoring en temps réel pour surveiller vos containers D
    docker-compose up -d
    ```
 
-4. Accédez au dashboard dans votre navigateur :
+5. Accédez au dashboard dans votre navigateur :
    ```
    http://localhost:8080
    ```
@@ -59,6 +86,15 @@ Vous pouvez personnaliser le dashboard en modifiant les variables d'environnemen
 
 - `PORT` : Port d'écoute du serveur (8080 par défaut)
 - `TARGET_WEBSITE` : Site à surveiller (aitalla.cloud par défaut)
+
+### Configuration du design moderne
+
+Le design moderne offre des options supplémentaires :
+
+- Personnalisation des couleurs
+- Bascule du mode sombre/clair
+- Disposition des widgets
+- Seuils d'alertes ajustables
 
 ## Développement
 
