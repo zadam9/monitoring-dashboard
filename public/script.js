@@ -1,81 +1,265 @@
 // Initialisation du socket
 const socket = io();
 
-// Données pour les graphiques
-const cpuData = {
-  labels: [], // Timestamps
-  datasets: [{
-    label: 'CPU Usage (%)',
-    data: [],
-    borderColor: '#0db7ed',
-    backgroundColor: 'rgba(13, 183, 237, 0.1)',
-    borderWidth: 2,
-    pointRadius: 0,
-    fill: true,
-    tension: 0.4,
-  }]
-};
-
-const memoryData = {
-  labels: [], // Timestamps
-  datasets: [{
-    label: 'Memory Usage (%)',
-    data: [],
-    borderColor: '#384d54',
-    backgroundColor: 'rgba(56, 77, 84, 0.1)',
-    borderWidth: 2,
-    pointRadius: 0,
-    fill: true,
-    tension: 0.4,
-  }]
+// État de l'application
+const appState = {
+  selectedTheme: localStorage.getItem('theme') || 'light',
+  activeSection: 'dashboard-section',
+  containers: [],
+  cpuThreshold: 80,
+  memoryThreshold: 80,
+  refreshInterval: 5000,
+  animationEnabled: true,
+  compactMode: false,
+  primaryColor: '#0db7ed'
 };
 
 // Configuration des graphiques
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'top',
-    },
-    tooltip: {
-      mode: 'index',
-      intersect: false,
-    }
+Chart.defaults.font.family = "'Poppins', sans-serif";
+Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+
+// Données pour les graphiques
+const chartData = {
+  cpu: {
+    labels: [],  // Timestamps
+    values: []
   },
-  scales: {
-    x: {
-      display: true,
-      title: {
-        display: true,
-        text: 'Temps'
-      }
-    },
-    y: {
-      display: true,
-      title: {
-        display: true,
-        text: 'Utilisation (%)'
-      },
-      min: 0,
-      max: 100
-    }
+  memory: {
+    labels: [],  // Timestamps
+    values: []
   }
 };
 
 // Initialisation des graphiques
-const ctx = document.getElementById('resources-chart').getContext('2d');
-const resourcesChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: cpuData.labels,
-    datasets: [
-      cpuData.datasets[0],
-      memoryData.datasets[0]
-    ]
-  },
-  options: chartOptions
-});
+let cpuDonutChart, memoryDonutChart, resourcesChart;
+
+// Fonction pour obtenir l'heure actuelle formatée
+function getCurrentTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Fonction pour initialiser les graphiques
+function initCharts() {
+  // CPU Donut Chart
+  const cpuCtx = document.getElementById('cpu-donut-chart').getContext('2d');
+  cpuDonutChart = new Chart(cpuCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Utilisé', 'Libre'],
+      datasets: [{
+        data: [0, 100],
+        backgroundColor: [
+          appState.primaryColor,
+          'rgba(200, 200, 200, 0.2)'
+        ],
+        borderWidth: 0,
+        cutout: '75%'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: false
+        }
+      }
+    }
+  });
+  
+  // Memory Donut Chart
+  const memoryCtx = document.getElementById('memory-donut-chart').getContext('2d');
+  memoryDonutChart = new Chart(memoryCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Utilisé', 'Libre'],
+      datasets: [{
+        data: [0, 100],
+        backgroundColor: [
+          appState.primaryColor,
+          'rgba(200, 200, 200, 0.2)'
+        ],
+        borderWidth: 0,
+        cutout: '75%'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: false
+        }
+      }
+    }
+  });
+  
+  // Resources Line Chart
+  const resourcesCtx = document.getElementById('resources-chart').getContext('2d');
+  resourcesChart = new Chart(resourcesCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'CPU (%)',
+          data: [],
+          borderColor: appState.primaryColor,
+          backgroundColor: `${appState.primaryColor}20`,
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.4,
+          order: 1
+        },
+        {
+          label: 'Mémoire (%)',
+          data: [],
+          borderColor: '#384d54',
+          backgroundColor: '#384d5420',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.4,
+          order: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          align: 'end'
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            stepSize: 20
+          }
+        }
+      }
+    }
+  });
+}
+
+// Fonction pour mettre à jour les graphiques
+function updateCharts(cpuUsage, memoryUsage) {
+  const now = getCurrentTime();
+  
+  // Mettre à jour les donut charts
+  cpuDonutChart.data.datasets[0].data = [cpuUsage, 100 - cpuUsage];
+  cpuDonutChart.update();
+  
+  memoryDonutChart.data.datasets[0].data = [memoryUsage, 100 - memoryUsage];
+  memoryDonutChart.update();
+  
+  // Mettre à jour le graphique de ressources
+  // Limiter à 20 points pour la lisibilité
+  if (chartData.cpu.labels.length > 20) {
+    chartData.cpu.labels.shift();
+    chartData.cpu.values.shift();
+    chartData.memory.values.shift();
+  }
+  
+  chartData.cpu.labels.push(now);
+  chartData.cpu.values.push(cpuUsage);
+  chartData.memory.values.push(memoryUsage);
+  
+  resourcesChart.data.labels = chartData.cpu.labels;
+  resourcesChart.data.datasets[0].data = chartData.cpu.values;
+  resourcesChart.data.datasets[1].data = chartData.memory.values;
+  resourcesChart.update();
+  
+  // Mettre à jour les valeurs affichées
+  document.getElementById('cpu-usage').textContent = `${cpuUsage.toFixed(1)}%`;
+  document.getElementById('cpu-usage-overview').textContent = `${cpuUsage.toFixed(1)}%`;
+  document.getElementById('memory-usage').textContent = `${memoryUsage.toFixed(1)}%`;
+  document.getElementById('memory-usage-overview').textContent = `${memoryUsage.toFixed(1)}%`;
+}
+
+// Fonction pour changer de section
+function switchSection(sectionId) {
+  // Cacher toutes les sections
+  document.querySelectorAll('.content-section').forEach(section => {
+    section.classList.remove('active');
+  });
+  
+  // Afficher la section sélectionnée
+  document.getElementById(sectionId).classList.add('active');
+  
+  // Mettre à jour le menu
+  document.querySelectorAll('.sidebar-nav li').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Trouver et activer l'élément de menu correspondant
+  document.querySelector(`.sidebar-nav a[href="#${sectionId}"]`).parentElement.classList.add('active');
+  
+  // Mettre à jour le titre de la page
+  document.querySelector('.page-title h2').textContent = document.querySelector(`#${sectionId} .section-header h2`).textContent;
+  
+  // Sauvegarder la section active
+  appState.activeSection = sectionId;
+}
+
+// Fonction pour basculer la sidebar
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('collapsed');
+}
+
+// Fonction pour changer de thème
+function switchTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  appState.selectedTheme = theme;
+  
+  // Mettre à jour le checkbox du thème
+  const themeCheckbox = document.getElementById('checkbox');
+  themeCheckbox.checked = theme === 'dark';
+}
+
+// Fonction pour formater la taille de mémoire
+function formatMemorySize(bytes) {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = bytes;
+  let unitIndex = 0;
+  
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
+}
 
 // Fonction pour formater le temps d'uptime
 function formatUptime(seconds) {
@@ -95,87 +279,65 @@ function formatUptime(seconds) {
   return result;
 }
 
-// Fonction pour formater la taille de mémoire
-function formatMemorySize(bytes) {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let size = bytes;
-  let unitIndex = 0;
-  
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-  
-  return `${size.toFixed(2)} ${units[unitIndex]}`;
-}
-
-// Formater date pour afficher dans l'UI
+// Fonction pour formater date pour afficher dans l'UI
 function formatDate(timestamp) {
   const date = new Date(timestamp * 1000);
   return date.toLocaleString();
 }
 
-// Mettre à jour les graphiques avec les nouvelles données
-function updateCharts(cpuUsage, memoryUsage) {
-  const now = new Date().toLocaleTimeString();
-  
-  // Limiter le nombre de points affichés (20 points)
-  if (cpuData.labels.length > 20) {
-    cpuData.labels.shift();
-    cpuData.datasets[0].data.shift();
-    memoryData.datasets[0].data.shift();
-  }
-  
-  cpuData.labels.push(now);
-  cpuData.datasets[0].data.push(cpuUsage);
-  memoryData.datasets[0].data.push(memoryUsage);
-  
-  resourcesChart.data.labels = cpuData.labels;
-  resourcesChart.data.datasets[0].data = cpuData.datasets[0].data;
-  resourcesChart.data.datasets[1].data = memoryData.datasets[0].data;
-  resourcesChart.update();
-}
-
 // Mettre à jour la liste des containers
 function updateContainersList(containers) {
-  const containersList = document.getElementById('containers-list');
-  const containerSelector = document.getElementById('container-selector');
+  // Mettre à jour l'état
+  appState.containers = containers;
   
-  // Vider la liste actuelle mais conserver les options dans le selecteur
-  const currentSelectedValue = containerSelector.value;
-  
-  // Mise à jour du compteur de containers
+  // Mettre à jour les compteurs de containers
   const activeContainers = containers.filter(c => c.state === 'running').length;
   document.getElementById('active-containers').textContent = activeContainers;
   document.getElementById('total-containers').textContent = containers.length;
+  document.getElementById('active-containers-count').textContent = activeContainers;
+  document.getElementById('total-containers-count').textContent = containers.length;
+  
+  // Mise à jour du site status overview
+  const siteStatus = document.getElementById('site-status-indicator').textContent;
+  document.getElementById('site-status-overview').textContent = siteStatus;
   
   // Nettoyer le conteneur
-  containersList.innerHTML = '';
+  const containersGrid = document.getElementById('containers-grid');
+  
+  // Garder seulement l'élément de loading
+  const loading = containersGrid.querySelector('.loading-container');
+  containersGrid.innerHTML = '';
+  
+  if (loading) {
+    containersGrid.appendChild(loading);
+  }
   
   // Si il n'y a pas de containers, afficher un message
   if (containers.length === 0) {
-    containersList.innerHTML = `
-      <div class="loading-container">
-        <p>Aucun container trouvé</p>
-      </div>
-    `;
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'empty-message';
+    emptyMessage.innerHTML = '<i class="fas fa-info-circle"></i><p>Aucun container trouvé</p>';
+    containersGrid.appendChild(emptyMessage);
     return;
   }
   
-  // Mettre à jour le dropdown avec les containers disponibles
-  // On sauvegarde d'abord le container sélectionné
+  // Cacher le loading
+  if (loading) {
+    loading.style.display = 'none';
+  }
+  
+  // Mettre à jour le selecteur de containers pour les logs
+  const containerSelector = document.getElementById('container-selector');
+  const currentSelectedValue = containerSelector.value;
+  
   containerSelector.innerHTML = '<option value="">Sélectionner un container</option>';
   
   // Variable pour suivre si nous devons charger le premier conteneur
   let shouldLoadFirstContainer = !currentSelectedValue;
   let firstContainerId = null;
   
-  // Ajouter les containers à la liste
+  // Ajouter les containers à la grille
   containers.forEach((container, index) => {
-    // Ajouter le container à la liste visuelle
-    const containerItem = document.createElement('div');
-    containerItem.classList.add('container-item');
-    
     // Sauvegarder l'ID du premier container si c'est le premier de la liste
     if (index === 0) {
       firstContainerId = container.id;
@@ -193,23 +355,52 @@ function updateContainersList(containers) {
     let portsHTML = '';
     if (container.ports && container.ports.length > 0) {
       container.ports.forEach(port => {
-        if (port.PublicPort) {
-          portsHTML += `<span class="port-tag">${port.PrivatePort}:${port.PublicPort}/${port.Type}</span>`;
+        if (port.publicPort) {
+          portsHTML += `<span class="port-tag">${port.privatePort}:${port.publicPort}/${port.type}</span>`;
         }
       });
     }
     
-    containerItem.innerHTML = `
-      <div class="container-status ${statusClass}">${container.state}</div>
-      <div class="container-info">
-        <div class="container-name">${container.name}</div>
-        <div class="container-id">ID: ${container.id}</div>
+    // Créer la carte de container
+    const containerCard = document.createElement('div');
+    containerCard.className = 'container-card';
+    containerCard.dataset.id = container.id;
+    containerCard.dataset.state = container.state;
+    
+    containerCard.innerHTML = `
+      <div class="container-header">
+        <div class="container-status ${statusClass}">${container.state}</div>
+        <div class="container-actions-buttons">
+          <button class="container-action-btn logs" data-id="${container.id}">
+            <i class="fas fa-terminal"></i> Logs
+          </button>
+          <button class="container-action-btn details" data-id="${container.id}">
+            <i class="fas fa-info-circle"></i> Détails
+          </button>
+        </div>
       </div>
-      <div class="container-image">${container.image}</div>
+      <div class="container-name">${container.name}</div>
+      <div class="container-id">ID: ${container.id}</div>
+      <div class="container-image">
+        <i class="fas fa-tag"></i>
+        ${container.image}
+      </div>
       <div class="container-ports">${portsHTML}</div>
     `;
     
-    containersList.appendChild(containerItem);
+    // Ajouter à la grille
+    containersGrid.appendChild(containerCard);
+    
+    // Ajouter les écouteurs d'événements
+    containerCard.querySelector('.container-action-btn.logs').addEventListener('click', () => {
+      containerSelector.value = container.id;
+      fetchContainerLogs(container.id);
+      switchSection('logs-section');
+    });
+    
+    containerCard.querySelector('.container-action-btn.details').addEventListener('click', () => {
+      showContainerDetails(container);
+    });
     
     // Ajouter au selecteur
     const option = document.createElement('option');
@@ -479,4 +670,294 @@ socket.on('systemStats', (stats) => {
 
 socket.on('containers', (containers) => {
   updateContainersList(containers);
+});
+
+// Fonction pour afficher les détails d'un container
+function showContainerDetails(container) {
+  const detailsContainer = document.getElementById('container-details');
+  const modal = document.getElementById('container-details-modal');
+  
+  // Format HTML pour les détails
+  let detailsHTML = `
+    <div class="container-details">
+      <div class="detail-group">
+        <h4>Informations générales</h4>
+        <div class="detail-row">
+          <span class="detail-label">Nom:</span>
+          <span class="detail-value">${container.name}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">ID:</span>
+          <span class="detail-value">${container.id}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Image:</span>
+          <span class="detail-value">${container.image}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">État:</span>
+          <span class="detail-value status-${container.state}">${container.state}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Créé le:</span>
+          <span class="detail-value">${formatDate(container.created)}</span>
+        </div>
+      </div>
+      
+      <div class="detail-group">
+        <h4>Ports exposés</h4>
+  `;
+  
+  if (container.ports && container.ports.length > 0) {
+    detailsHTML += '<div class="ports-list">';
+    container.ports.forEach(port => {
+      if (port.publicPort) {
+        detailsHTML += `
+          <div class="port-item">
+            <span class="port-internal">${port.privatePort}/${port.type}</span>
+            <i class="fas fa-arrow-right"></i>
+            <span class="port-external">${port.publicPort}</span>
+          </div>
+        `;
+      } else {
+        detailsHTML += `
+          <div class="port-item">
+            <span class="port-internal">${port.privatePort}/${port.type}</span>
+            <i class="fas fa-times"></i>
+            <span class="port-external">Non exposé</span>
+          </div>
+        `;
+      }
+    });
+    detailsHTML += '</div>';
+  } else {
+    detailsHTML += '<p class="no-data">Aucun port exposé</p>';
+  }
+  
+  detailsHTML += `
+      </div>
+      
+      <div class="detail-actions">
+        <button class="action-button view-logs" data-id="${container.id}">
+          <i class="fas fa-terminal"></i> Voir les logs
+        </button>
+      </div>
+    </div>
+  `;
+  
+  detailsContainer.innerHTML = detailsHTML;
+  
+  // Ajouter l'écouteur pour le bouton de logs
+  detailsContainer.querySelector('.view-logs').addEventListener('click', () => {
+    document.getElementById('container-selector').value = container.id;
+    fetchContainerLogs(container.id);
+    switchSection('logs-section');
+    modal.classList.remove('active');
+  });
+  
+  // Afficher le modal
+  modal.classList.add('active');
+  
+  // Ajouter l'écouteur pour fermer le modal
+  modal.querySelector('.modal-close').addEventListener('click', () => {
+    modal.classList.remove('active');
+  });
+  
+  // Fermer le modal en cliquant en dehors
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.classList.remove('active');
+    }
+  });
+}
+
+// Initialisation du DOM
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialiser les graphiques
+  initCharts();
+  
+  // Appliquer le thème initial
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.getElementById('checkbox').checked = savedTheme === 'dark';
+  
+  // Écouteur pour la bascule du thème
+  document.getElementById('checkbox').addEventListener('change', (e) => {
+    switchTheme(e.target.checked ? 'dark' : 'light');
+  });
+  
+  // Écouteur pour le basculement de la sidebar
+  document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+  
+  // Écouteurs pour la navigation
+  document.querySelectorAll('.sidebar-nav a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = e.currentTarget.getAttribute('href').substring(1);
+      switchSection(target);
+    });
+  });
+  
+  // Écouteur pour les sélecteurs de plage de temps
+  document.querySelectorAll('.time-range').forEach(button => {
+    button.addEventListener('click', (e) => {
+      document.querySelectorAll('.time-range').forEach(btn => btn.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      // Logique pour changer l'intervalle temporel du graphique
+    });
+  });
+  
+  // Écouteur pour les filtres de containers
+  document.querySelectorAll('.filter-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      
+      const filter = e.currentTarget.dataset.filter;
+      const containers = document.querySelectorAll('.container-card');
+      
+      containers.forEach(card => {
+        if (filter === 'all' || (filter === 'running' && card.dataset.state === 'running') || (filter === 'stopped' && card.dataset.state === 'exited')) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+  
+  // Écouteur pour les options d'affichage des containers
+  document.querySelectorAll('.view-option').forEach(button => {
+    button.addEventListener('click', (e) => {
+      document.querySelectorAll('.view-option').forEach(btn => btn.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      
+      const view = e.currentTarget.dataset.view;
+      const containersGrid = document.getElementById('containers-grid');
+      
+      if (view === 'list') {
+        containersGrid.classList.add('list-view');
+      } else {
+        containersGrid.classList.remove('list-view');
+      }
+    });
+  });
+  
+  // Écouteur pour la recherche de containers
+  document.getElementById('container-search').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const containers = document.querySelectorAll('.container-card');
+    
+    containers.forEach(card => {
+      const name = card.querySelector('.container-name').textContent.toLowerCase();
+      const id = card.querySelector('.container-id').textContent.toLowerCase();
+      const image = card.querySelector('.container-image').textContent.toLowerCase();
+      
+      if (name.includes(searchTerm) || id.includes(searchTerm) || image.includes(searchTerm)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+  
+  // Écouteur pour les paramètres de thème
+  document.querySelectorAll('.theme-option').forEach(button => {
+    button.addEventListener('click', (e) => {
+      document.querySelectorAll('.theme-option').forEach(btn => btn.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      
+      const theme = e.currentTarget.dataset.theme;
+      if (theme === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        switchTheme(prefersDark ? 'dark' : 'light');
+      } else {
+        switchTheme(theme);
+      }
+    });
+  });
+  
+  // Écouteur pour les couleurs principales
+  document.querySelectorAll('.color-option').forEach(button => {
+    button.addEventListener('click', (e) => {
+      document.querySelectorAll('.color-option').forEach(btn => btn.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      
+      const color = e.currentTarget.dataset.color;
+      document.documentElement.style.setProperty('--primary-color', color);
+      appState.primaryColor = color;
+      
+      // Mettre à jour les graphiques avec la nouvelle couleur
+      if (cpuDonutChart && memoryDonutChart && resourcesChart) {
+        cpuDonutChart.data.datasets[0].backgroundColor[0] = color;
+        cpuDonutChart.update();
+        
+        memoryDonutChart.data.datasets[0].backgroundColor[0] = color;
+        memoryDonutChart.update();
+        
+        resourcesChart.data.datasets[0].borderColor = color;
+        resourcesChart.data.datasets[0].backgroundColor = `${color}20`;
+        resourcesChart.update();
+      }
+    });
+  });
+  
+  // Écouteur pour la sélection du container pour les logs
+  const containerSelector = document.getElementById('container-selector');
+  containerSelector.addEventListener('change', (e) => {
+    if (e.target.value) {
+      fetchContainerLogs(e.target.value);
+    }
+  });
+  
+  // Écouteur pour le bouton de rafraîchissement des logs
+  const refreshLogsButton = document.getElementById('refresh-logs');
+  refreshLogsButton.addEventListener('click', () => {
+    fetchContainerLogs(containerSelector.value);
+  });
+  
+  // Écouteur pour le bouton de copie des logs
+  const copyLogsButton = document.getElementById('copy-logs');
+  copyLogsButton.addEventListener('click', () => {
+    const logsOutput = document.getElementById('logs-output');
+    navigator.clipboard.writeText(logsOutput.textContent)
+      .then(() => {
+        showAlert('Logs copiés dans le presse-papier', 'success');
+      })
+      .catch(err => {
+        console.error('Erreur lors de la copie:', err);
+        showAlert('Erreur lors de la copie des logs', 'danger');
+      });
+  });
+  
+  // Écouteur pour le bouton d'effacement des logs
+  const clearLogsButton = document.getElementById('clear-logs');
+  clearLogsButton.addEventListener('click', () => {
+    document.getElementById('logs-output').textContent = 'Logs effacés';
+  });
+  
+  // Écouteur pour le filtre des logs
+  document.getElementById('logs-filter').addEventListener('input', (e) => {
+    const filterTerm = e.target.value.toLowerCase();
+    const logsOutput = document.getElementById('logs-output');
+    const originalText = logsOutput.getAttribute('data-original') || logsOutput.textContent;
+    
+    // Sauvegarder le texte original si ce n'est pas déjà fait
+    if (!logsOutput.getAttribute('data-original')) {
+      logsOutput.setAttribute('data-original', originalText);
+    }
+    
+    if (!filterTerm) {
+      logsOutput.textContent = originalText;
+      return;
+    }
+    
+    // Filtrer les logs
+    const lines = originalText.split('\n');
+    const filteredLines = lines.filter(line => line.toLowerCase().includes(filterTerm));
+    logsOutput.textContent = filteredLines.join('\n');
+  });
+  
+  // Écouteur pour le bouton d'exportation
+  document.getElementById('export-report').addEventListener('click', exportSystemReport);
 }); 

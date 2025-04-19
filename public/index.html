@@ -8,23 +8,57 @@
   <meta name="author" content="Adam">
   <title>LaborEssence - Dashboard Docker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="dashboard">
-    <!-- En-tête -->
-    <header>
-      <div class="logo">
-        <i class="fab fa-docker"></i>
-        <h1>LaborEssence</h1>
-      </div>
-      <div class="subtitle">Dashboard de Monitoring Docker</div>
-      <div class="system-info">
-        <div class="system-status" id="system-uptime">
-          Uptime: Chargement...
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fab fa-docker"></i>
+          <h1>LaborEssence</h1>
         </div>
+        <button id="sidebar-toggle" class="sidebar-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <ul>
+          <li class="active">
+            <a href="#dashboard-section">
+              <i class="fas fa-tachometer-alt"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="#containers-section">
+              <i class="fab fa-docker"></i>
+              <span>Containers</span>
+            </a>
+          </li>
+          <li>
+            <a href="#logs-section">
+              <i class="fas fa-terminal"></i>
+              <span>Logs</span>
+            </a>
+          </li>
+          <li>
+            <a href="#settings-section">
+              <i class="fas fa-cog"></i>
+              <span>Paramètres</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
         <div class="theme-switch-wrapper">
           <label class="theme-switch" for="checkbox">
             <input type="checkbox" id="checkbox" />
@@ -33,110 +67,406 @@
               <i class="fas fa-moon"></i>
             </div>
           </label>
+          <span class="theme-label">Mode sombre</span>
         </div>
+        <div class="version">v1.2.0</div>
       </div>
-    </header>
+    </aside>
     
-    <!-- Statistiques Système -->
-    <section class="stats-cards">
-      <div class="card" id="server-status">
-        <div class="card-icon">
-          <i class="fas fa-server"></i>
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="page-title">
+          <h2>Dashboard</h2>
         </div>
-        <div class="card-content">
-          <h3>Serveur</h3>
-          <p class="status-indicator">Chargement...</p>
-          <div class="details">
-            <p>Hostname: <span id="hostname">-</span></p>
-            <p>Platform: <span id="platform">-</span></p>
+        
+        <div class="top-bar-tools">
+          <div class="system-status" id="system-uptime">
+            <i class="fas fa-clock"></i>
+            <span>Uptime: Chargement...</span>
+          </div>
+          
+          <button id="export-report" class="export-button">
+            <i class="fas fa-file-export"></i>
+            <span>Exporter</span>
+          </button>
+          
+          <div class="user-profile">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Admin" class="avatar">
+            <span>Admin</span>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Alerts Container -->
+      <div id="alerts-container"></div>
+      
+      <!-- Dashboard Content -->
+      <div id="dashboard-section" class="content-section active">
+        <div class="grid-container">
+          <!-- Stats Overview -->
+          <div class="grid-item grid-item-wide">
+            <div class="card overview-card">
+              <div class="overview-stats">
+                <div class="overview-stat">
+                  <i class="fas fa-microchip"></i>
+                  <div class="overview-stat-content">
+                    <h3>CPU</h3>
+                    <p id="cpu-usage-overview">Chargement...</p>
+                  </div>
+                </div>
+                
+                <div class="overview-stat">
+                  <i class="fas fa-memory"></i>
+                  <div class="overview-stat-content">
+                    <h3>Mémoire</h3>
+                    <p id="memory-usage-overview">Chargement...</p>
+                  </div>
+                </div>
+                
+                <div class="overview-stat">
+                  <i class="fab fa-docker"></i>
+                  <div class="overview-stat-content">
+                    <h3>Containers</h3>
+                    <p><span id="active-containers">0</span>/<span id="total-containers">0</span></p>
+                  </div>
+                </div>
+                
+                <div class="overview-stat">
+                  <i class="fas fa-globe"></i>
+                  <div class="overview-stat-content">
+                    <h3>Site</h3>
+                    <p id="site-status-overview">Chargement...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CPU Card -->
+          <div class="grid-item">
+            <div class="card metric-card">
+              <div class="card-header">
+                <h3><i class="fas fa-microchip"></i> CPU</h3>
+                <div class="card-actions">
+                  <button class="card-action refresh-card"><i class="fas fa-sync-alt"></i></button>
+                  <button class="card-action expand-card"><i class="fas fa-expand"></i></button>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="donut-chart-container">
+                  <canvas id="cpu-donut-chart"></canvas>
+                  <div class="donut-center" id="cpu-usage">0%</div>
+                </div>
+                <div class="metric-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Charge</span>
+                    <span class="detail-value" id="cpu-load">0.00</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Cœurs</span>
+                    <span class="detail-value" id="cpu-cores">N/A</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Memory Card -->
+          <div class="grid-item">
+            <div class="card metric-card">
+              <div class="card-header">
+                <h3><i class="fas fa-memory"></i> Mémoire</h3>
+                <div class="card-actions">
+                  <button class="card-action refresh-card"><i class="fas fa-sync-alt"></i></button>
+                  <button class="card-action expand-card"><i class="fas fa-expand"></i></button>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="donut-chart-container">
+                  <canvas id="memory-donut-chart"></canvas>
+                  <div class="donut-center" id="memory-usage">0%</div>
+                </div>
+                <div class="metric-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Utilisée</span>
+                    <span class="detail-value" id="memory-used">0 MB</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Totale</span>
+                    <span class="detail-value" id="memory-total">0 MB</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Website Status -->
+          <div class="grid-item">
+            <div class="card">
+              <div class="card-header">
+                <h3>
+                  <i class="fas fa-globe"></i>
+                  <a href="https://aitalla.cloud" target="_blank" class="site-link">Site Principal</a>
+                </h3>
+                <div class="card-actions">
+                  <button class="card-action refresh-card"><i class="fas fa-sync-alt"></i></button>
+                </div>
+              </div>
+              <div class="card-content">
+                <div class="status-display">
+                  <div class="status-icon" id="website-status-icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </div>
+                  <div class="status-details">
+                    <p class="status-indicator" id="site-status-indicator">Chargement...</p>
+                    <div class="details">
+                      <p>HTTPS: <span id="https-status">-</span></p>
+                      <p>Code: <span id="status-code">-</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Server Info -->
+          <div class="grid-item">
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="fas fa-server"></i> Serveur</h3>
+              </div>
+              <div class="card-content">
+                <div class="server-info">
+                  <div class="info-item">
+                    <span class="info-label"><i class="fas fa-tag"></i> Hostname</span>
+                    <span class="info-value" id="hostname">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label"><i class="fas fa-desktop"></i> Plateforme</span>
+                    <span class="info-value" id="platform">-</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label"><i class="fas fa-clock"></i> Uptime</span>
+                    <span class="info-value" id="uptime-value">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Resources History -->
+          <div class="grid-item grid-item-wide">
+            <div class="card">
+              <div class="card-header">
+                <h3><i class="fas fa-chart-line"></i> Historique des ressources</h3>
+                <div class="time-range-selector">
+                  <button class="time-range active" data-range="1h">1h</button>
+                  <button class="time-range" data-range="6h">6h</button>
+                  <button class="time-range" data-range="24h">24h</button>
+                </div>
+              </div>
+              <div class="card-content">
+                <canvas id="resources-chart"></canvas>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="card" id="memory-status">
-        <div class="card-icon">
-          <i class="fas fa-memory"></i>
-        </div>
-        <div class="card-content">
-          <h3>Mémoire</h3>
-          <div class="progress-bar">
-            <div class="progress" id="memory-usage-bar"></div>
+      <!-- Containers Section -->
+      <div id="containers-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fab fa-docker"></i> Containers Docker</h2>
+          <div class="container-actions">
+            <div class="search-container">
+              <input type="text" id="container-search" placeholder="Rechercher un container...">
+              <i class="fas fa-search"></i>
+            </div>
+            <div class="view-selector">
+              <button class="view-option active" data-view="card"><i class="fas fa-th-large"></i></button>
+              <button class="view-option" data-view="list"><i class="fas fa-list"></i></button>
+            </div>
           </div>
-          <p id="memory-usage">Chargement...</p>
+        </div>
+        
+        <div class="container-filters">
+          <button class="filter-btn active" data-filter="all">Tous</button>
+          <button class="filter-btn" data-filter="running">En cours</button>
+          <button class="filter-btn" data-filter="stopped">Arrêtés</button>
+        </div>
+        
+        <div class="container-count">
+          <span id="active-containers-count">0</span> actifs / <span id="total-containers-count">0</span> total
+        </div>
+        
+        <div class="containers-grid" id="containers-grid">
+          <!-- Les containers seront ajoutés dynamiquement ici -->
+          <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Chargement des containers...</p>
+          </div>
         </div>
       </div>
       
-      <div class="card" id="cpu-status">
-        <div class="card-icon">
-          <i class="fas fa-microchip"></i>
+      <!-- Logs Section -->
+      <div id="logs-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-terminal"></i> Logs des containers</h2>
         </div>
-        <div class="card-content">
-          <h3>CPU</h3>
-          <div class="progress-bar">
-            <div class="progress" id="cpu-usage-bar"></div>
+        
+        <div class="logs-controls">
+          <div class="container-selector-wrapper">
+            <select id="container-selector" class="container-selector">
+              <option value="">Sélectionner un container</option>
+            </select>
           </div>
-          <p id="cpu-usage">Chargement...</p>
+          
+          <div class="logs-actions">
+            <button id="refresh-logs" class="action-button">
+              <i class="fas fa-sync-alt"></i>
+              <span>Rafraîchir</span>
+            </button>
+            <button id="copy-logs" class="action-button">
+              <i class="fas fa-copy"></i>
+              <span>Copier</span>
+            </button>
+            <button id="clear-logs" class="action-button">
+              <i class="fas fa-eraser"></i>
+              <span>Effacer</span>
+            </button>
+            <div class="logs-filter">
+              <input type="text" id="logs-filter" placeholder="Filtrer les logs...">
+              <i class="fas fa-filter"></i>
+            </div>
+          </div>
+        </div>
+        
+        <div class="logs-container">
+          <pre id="logs-output">Sélectionnez un container pour voir ses logs</pre>
         </div>
       </div>
       
-      <div class="card" id="website-status">
-        <div class="card-icon">
-          <i class="fas fa-globe"></i>
+      <!-- Settings Section -->
+      <div id="settings-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-cog"></i> Paramètres</h2>
         </div>
-        <div class="card-content">
-          <h3>
-            <a href="https://aitalla.cloud" target="_blank" class="site-link">Site Principal <i class="fas fa-external-link-alt"></i></a>
-          </h3>
-          <p class="status-indicator" id="site-status-indicator">Chargement...</p>
-          <div class="details">
-            <p>HTTPS: <span id="https-status">-</span></p>
-            <p>Code: <span id="status-code">-</span></p>
+        
+        <div class="settings-grid">
+          <div class="settings-card">
+            <h3>Apparence</h3>
+            <div class="setting-item">
+              <label>Thème</label>
+              <div class="theme-options">
+                <button class="theme-option" data-theme="light">Clair</button>
+                <button class="theme-option active" data-theme="dark">Sombre</button>
+                <button class="theme-option" data-theme="system">Système</button>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label>Couleur principale</label>
+              <div class="color-picker">
+                <button class="color-option active" style="--color: #0db7ed" data-color="#0db7ed"></button>
+                <button class="color-option" style="--color: #2496ed" data-color="#2496ed"></button>
+                <button class="color-option" style="--color: #27ae60" data-color="#27ae60"></button>
+                <button class="color-option" style="--color: #e74c3c" data-color="#e74c3c"></button>
+                <button class="color-option" style="--color: #9b59b6" data-color="#9b59b6"></button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-card">
+            <h3>Notifications</h3>
+            <div class="setting-item toggle-setting">
+              <label>Alertes CPU</label>
+              <div class="toggle-switch">
+                <input type="checkbox" id="cpu-alerts" checked>
+                <label for="cpu-alerts"></label>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label>Seuil CPU (%)</label>
+              <input type="number" id="cpu-threshold" value="80" min="50" max="100" step="5">
+            </div>
+            <div class="setting-item toggle-setting">
+              <label>Alertes mémoire</label>
+              <div class="toggle-switch">
+                <input type="checkbox" id="memory-alerts" checked>
+                <label for="memory-alerts"></label>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label>Seuil mémoire (%)</label>
+              <input type="number" id="memory-threshold" value="80" min="50" max="100" step="5">
+            </div>
+          </div>
+          
+          <div class="settings-card">
+            <h3>Disposition</h3>
+            <div class="setting-item toggle-setting">
+              <label>Mode compact</label>
+              <div class="toggle-switch">
+                <input type="checkbox" id="compact-mode">
+                <label for="compact-mode"></label>
+              </div>
+            </div>
+            <div class="setting-item toggle-setting">
+              <label>Animation des graphiques</label>
+              <div class="toggle-switch">
+                <input type="checkbox" id="chart-animations" checked>
+                <label for="chart-animations"></label>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label>Intervalle de rafraîchissement</label>
+              <select id="refresh-interval">
+                <option value="3000">3 secondes</option>
+                <option value="5000" selected>5 secondes</option>
+                <option value="10000">10 secondes</option>
+                <option value="30000">30 secondes</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="settings-card">
+            <h3>À propos</h3>
+            <div class="about-info">
+              <p><strong>LaborEssence Dashboard</strong> v1.2.0</p>
+              <p>Créé par Adam</p>
+              <p>Un dashboard de monitoring Docker en temps réel</p>
+              <div class="about-links">
+                <a href="https://github.com/zadam9/monitoring-dashboard" target="_blank">
+                  <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://aitalla.cloud" target="_blank">
+                  <i class="fas fa-globe"></i> Site Web
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </section>
-    
-    <!-- Graphiques -->
-    <section class="charts-section">
-      <div class="chart-container">
-        <h3><i class="fas fa-chart-line"></i> Historique CPU & RAM</h3>
-        <canvas id="resources-chart"></canvas>
+      
+      <!-- Footer -->
+      <footer class="main-footer">
+        <p>&copy; 2023 LaborEssence - Dashboard créé par Adam</p>
+      </footer>
+    </main>
+  </div>
+  
+  <!-- Modals -->
+  <div class="modal" id="container-details-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Détails du container</h3>
+        <button class="modal-close"><i class="fas fa-times"></i></button>
       </div>
-    </section>
-    
-    <!-- Containers Docker -->
-    <section class="containers-section">
-      <h2><i class="fab fa-docker"></i> Containers Docker</h2>
-      <div class="container-count">
-        <span id="active-containers">0</span> actifs / <span id="total-containers">0</span> total
+      <div class="modal-body">
+        <div id="container-details"></div>
       </div>
-      <div class="containers-list" id="containers-list">
-        <div class="loading-container">
-          <div class="loading-spinner"></div>
-          <p>Chargement des containers...</p>
-        </div>
-      </div>
-    </section>
-    
-    <!-- Logs -->
-    <section class="logs-section" id="logs-section">
-      <h2><i class="fas fa-terminal"></i> Logs</h2>
-      <div class="logs-selector">
-        <select id="container-selector">
-          <option value="">Sélectionner un container</option>
-        </select>
-        <button id="refresh-logs"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
-      </div>
-      <div class="logs-container">
-        <pre id="logs-output">Sélectionnez un container pour voir ses logs</pre>
-      </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer>
-      <p>&copy; 2023 LaborEssence - Dashboard créé par Adam</p>
-      <div class="version">v1.1.0</div>
-    </footer>
+    </div>
   </div>
   
   <script src="script.js"></script>
