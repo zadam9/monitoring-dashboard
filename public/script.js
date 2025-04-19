@@ -1043,10 +1043,44 @@ socket.on('systemStats', function(data) {
       siteStatusElement.innerHTML = statusText;
     }
     
-    const httpsIndicator = document.getElementById('https-indicator');
-    if (httpsIndicator) {
-      httpsIndicator.className = data.website.https ? 'status-up' : 'status-down';
-      httpsIndicator.textContent = data.website.https ? 'Actif' : 'Inactif';
+    // Mettre à jour l'indicateur de statut principal
+    const siteStatusIndicator = document.getElementById('site-status-indicator');
+    if (siteStatusIndicator) {
+      if (data.website.status === 'UP') {
+        siteStatusIndicator.textContent = 'Opérationnel';
+        siteStatusIndicator.className = 'status-indicator status-up';
+      } else if (data.website.status === 'PARTIAL') {
+        siteStatusIndicator.textContent = 'Partiellement disponible';
+        siteStatusIndicator.className = 'status-indicator status-partial';
+      } else {
+        siteStatusIndicator.textContent = 'Hors service';
+        siteStatusIndicator.className = 'status-indicator status-down';
+      }
+    }
+    
+    // Mettre à jour l'icône
+    const websiteStatusIcon = document.getElementById('website-status-icon');
+    if (websiteStatusIcon) {
+      websiteStatusIcon.innerHTML = '';
+      const iconClass = data.website.status === 'UP' ? 'fas fa-check-circle status-up' : 
+                        data.website.status === 'PARTIAL' ? 'fas fa-exclamation-circle status-partial' : 
+                        'fas fa-times-circle status-down';
+      const icon = document.createElement('i');
+      icon.className = iconClass;
+      websiteStatusIcon.appendChild(icon);
+    }
+    
+    // Mettre à jour le statut HTTPS
+    const httpsStatus = document.getElementById('https-status');
+    if (httpsStatus) {
+      httpsStatus.textContent = data.website.https ? 'Actif' : 'Inactif';
+      httpsStatus.className = data.website.https ? 'status-up' : 'status-down';
+    }
+    
+    // Mettre à jour le code de statut
+    const statusCode = document.getElementById('status-code');
+    if (statusCode) {
+      statusCode.textContent = data.website.statusCode || '-';
     }
   }
   

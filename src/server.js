@@ -506,6 +506,76 @@ app.get('/api/containers/:id/info', async (req, res) => {
   }
 });
 
+// Fonctions pour la sécurité
+async function getSecurityData() {
+  // Données simulées pour la démonstration
+  return {
+    lastAuditTime: new Date().toISOString(),
+    securityScore: 75,
+    openPorts: [
+      { port: 22, service: 'SSH', state: 'open', risk: 'medium' },
+      { port: 80, service: 'HTTP', state: 'open', risk: 'low' },
+      { port: 443, service: 'HTTPS', state: 'open', risk: 'low' },
+      { port: 8080, service: 'HTTP-ALT', state: 'open', risk: 'medium' }
+    ],
+    rootUsers: [
+      { username: 'root', uid: 0, group: 'root', shell: '/bin/bash' }
+    ],
+    exposedServices: [
+      { name: 'SSH', port: 22, state: 'running', risk: 'medium' },
+      { name: 'NGINX', port: 80, state: 'running', risk: 'low' },
+      { name: 'Docker API', port: 2375, state: 'filtered', risk: 'high' }
+    ],
+    vulnerabilities: [
+      { issue: 'Docker API exposée', description: 'L\'API Docker est exposée sans authentification', level: 'high', recommendation: 'Activer l\'authentification TLS' },
+      { issue: 'Accès SSH par mot de passe', description: 'L\'accès SSH par mot de passe est activé', level: 'medium', recommendation: 'Utiliser uniquement des clés SSH' },
+      { issue: 'Version de logiciel obsolète', description: 'Plusieurs versions de logiciels sont obsolètes', level: 'medium', recommendation: 'Mettre à jour les packages systèmes' }
+    ],
+    modifiedFiles: [
+      { name: 'nginx.conf', path: '/etc/nginx/', mtime: new Date().toISOString(), user: 'root' },
+      { name: 'docker.service', path: '/etc/systemd/system/', mtime: new Date().toISOString(), user: 'root' },
+      { name: 'authorized_keys', path: '/root/.ssh/', mtime: new Date().toISOString(), user: 'root' }
+    ]
+  };
+}
+
+async function runSecurityAudit() {
+  // Simulation d'un audit de sécurité
+  console.log('Exécution d\'un audit de sécurité...');
+  
+  // Retarder la réponse pour simuler un traitement
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  const securityData = await getSecurityData();
+  
+  // Ajouter quelques variations pour l'audit
+  securityData.lastAuditTime = new Date().toISOString();
+  securityData.securityScore = Math.floor(Math.random() * 20) + 65; // Score entre 65 et 85
+  
+  return securityData;
+}
+
+// Routes API pour la sécurité
+app.get('/api/security/data', async (req, res) => {
+  try {
+    const securityData = await getSecurityData();
+    res.json(securityData);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des données de sécurité:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/security/audit', verifyApiKey, async (req, res) => {
+  try {
+    const auditResults = await runSecurityAudit();
+    res.json(auditResults);
+  } catch (error) {
+    console.error('Erreur lors de l\'audit de sécurité:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Démarrage du serveur
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`LaborEssence Dashboard démarre sur http://0.0.0.0:${PORT}`);
