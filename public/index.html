@@ -50,6 +50,12 @@
             </a>
           </li>
           <li>
+            <a href="#security-section">
+              <i class="fas fa-shield-alt"></i>
+              <span>Sécurité</span>
+            </a>
+          </li>
+          <li>
             <a href="#settings-section">
               <i class="fas fa-cog"></i>
               <span>Paramètres</span>
@@ -379,6 +385,184 @@
         
         <div class="logs-container">
           <pre id="logs-output">Sélectionnez un container pour voir ses logs</pre>
+        </div>
+      </div>
+      
+      <!-- Security Section -->
+      <div id="security-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-shield-alt"></i> Audit de Sécurité</h2>
+          <div class="security-actions">
+            <button id="run-security-audit" class="action-button">
+              <i class="fas fa-sync-alt"></i>
+              <span>Lancer un audit</span>
+            </button>
+            <button id="export-security-report" class="action-button">
+              <i class="fas fa-file-export"></i>
+              <span>Exporter le rapport</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="security-overview">
+          <div class="security-score-card">
+            <div class="security-score">
+              <canvas id="security-score-chart"></canvas>
+              <div class="security-score-value" id="security-score-value">-</div>
+            </div>
+            <div class="security-summary">
+              <h3>Score de sécurité</h3>
+              <p id="security-summary-text">Aucun audit effectué récemment</p>
+              <div class="last-audit-time">Dernier audit: <span id="last-audit-time">Jamais</span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="security-grid">
+          <!-- Open Ports -->
+          <div class="security-card">
+            <div class="card-header">
+              <h3><i class="fas fa-network-wired"></i> Ports ouverts</h3>
+              <div class="security-status" id="ports-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="table-container">
+                <table class="security-table" id="open-ports-table">
+                  <thead>
+                    <tr>
+                      <th>Port</th>
+                      <th>Service</th>
+                      <th>État</th>
+                      <th>Risque</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="placeholder-row">
+                      <td colspan="4">Aucune donnée disponible</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Root Users -->
+          <div class="security-card">
+            <div class="card-header">
+              <h3><i class="fas fa-users-cog"></i> Utilisateurs root</h3>
+              <div class="security-status" id="users-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="table-container">
+                <table class="security-table" id="root-users-table">
+                  <thead>
+                    <tr>
+                      <th>Utilisateur</th>
+                      <th>UID</th>
+                      <th>Groupe</th>
+                      <th>Shell</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="placeholder-row">
+                      <td colspan="4">Aucune donnée disponible</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Exposed Services -->
+          <div class="security-card">
+            <div class="card-header">
+              <h3><i class="fas fa-server"></i> Services exposés</h3>
+              <div class="security-status" id="services-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="table-container">
+                <table class="security-table" id="exposed-services-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>Port</th>
+                      <th>État</th>
+                      <th>Risque</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="placeholder-row">
+                      <td colspan="4">Aucune donnée disponible</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Security Vulnerabilities -->
+          <div class="security-card">
+            <div class="card-header">
+              <h3><i class="fas fa-exclamation-triangle"></i> Failles potentielles</h3>
+              <div class="security-status" id="vulnerabilities-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="table-container">
+                <table class="security-table" id="vulnerabilities-table">
+                  <thead>
+                    <tr>
+                      <th>Problème</th>
+                      <th>Description</th>
+                      <th>Niveau</th>
+                      <th>Recommandation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="placeholder-row">
+                      <td colspan="4">Aucune donnée disponible</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Recently Modified Files -->
+          <div class="security-card grid-item-wide">
+            <div class="card-header">
+              <h3><i class="fas fa-file-alt"></i> Fichiers modifiés récemment</h3>
+              <div class="security-status" id="files-status">
+                <i class="fas fa-circle-notch fa-spin"></i>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="table-container">
+                <table class="security-table" id="modified-files-table">
+                  <thead>
+                    <tr>
+                      <th>Fichier</th>
+                      <th>Chemin</th>
+                      <th>Date de modification</th>
+                      <th>Utilisateur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="placeholder-row">
+                      <td colspan="4">Aucune donnée disponible</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       

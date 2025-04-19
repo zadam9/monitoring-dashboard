@@ -40,6 +40,18 @@ let cpuDonutChart, memoryDonutChart, resourcesChart;
 // Variables pour les nouveaux graphiques
 let cpuHistoryChart, memoryHistoryChart, uptimeHistoryChart, websiteHistoryChart;
 
+// Variables pour le tableau de bord de sécurité
+let securityScoreChart;
+let securityData = {
+  lastAuditTime: null,
+  securityScore: null,
+  openPorts: [],
+  rootUsers: [],
+  exposedServices: [],
+  vulnerabilities: [],
+  modifiedFiles: []
+};
+
 // Fonction pour obtenir l'heure actuelle formatée
 function getCurrentTime() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -358,6 +370,48 @@ function initHistoryCharts() {
       }
     }
   });
+}
+
+// Fonction pour initialiser les graphiques relatifs à la sécurité
+function initSecurityCharts() {
+  const securityScoreCtx = document.getElementById('security-score-chart').getContext('2d');
+  securityScoreChart = new Chart(securityScoreCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Score', 'Restant'],
+      datasets: [{
+        data: [0, 100],
+        backgroundColor: [
+          '#27ae60',
+          'rgba(200, 200, 200, 0.2)'
+        ],
+        borderWidth: 0,
+        cutout: '75%'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: appState.animationEnabled ? 1000 : 0
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: false
+        }
+      }
+    }
+  });
+}
+
+// Fonction pour initialiser tous les graphiques
+function initAllCharts() {
+  initCharts();
+  initHistoryCharts();
+  initSecurityCharts();
 }
 
 // Fonction pour mettre à jour les graphiques
@@ -1245,10 +1299,7 @@ socket.on('websiteHistory', (history) => {
 // Initialisation du DOM
 document.addEventListener('DOMContentLoaded', () => {
   // Initialiser les graphiques
-  initCharts();
-  
-  // Initialiser les graphiques d'historique
-  initHistoryCharts();
+  initAllCharts();
   
   // Charger l'historique initial
   loadHistory('24h');
@@ -1445,4 +1496,599 @@ document.addEventListener('DOMContentLoaded', () => {
       changeHistoryPeriod(period);
     });
   });
-}); 
+
+  // Initialiser tous les graphiques
+  initAllCharts();
+  
+  // Charger les données de sécurité
+  fetchSecurityData();
+  
+  // Gestion des événements de la section sécurité
+  document.getElementById('run-security-audit').addEventListener('click', () => {
+    showApiKeyPrompt(() => {
+      runSecurityAudit();
+    });
+  });
+  
+  document.getElementById('export-security-report').addEventListener('click', exportSecurityReport);
+});
+
+// Fonction pour mettre à jour le score de sécurité
+function updateSecurityScore(score) {
+  if (!securityScoreChart) return;
+  
+  // Mettre à jour la couleur en fonction du score
+  let color = '#27ae60'; // vert pour un bon score
+  if (score < 70) {
+    color = '#f39c12'; // orange pour un score moyen
+  }
+  if (score < 50) {
+    color = '#e74c3c'; // rouge pour un mauvais score
+  }
+  
+  // Mettre à jour le graphique
+  securityScoreChart.data.datasets[0].data = [score, 100 - score];
+  securityScoreChart.data.datasets[0].backgroundColor[0] = color;
+  securityScoreChart.update();
+  
+  // Mettre à jour le texte du score
+  document.getElementById('security-score-value').innerText = score + '%';
+  document.getElementById('security-score-value').style.color = color;
+  
+  // Mettre à jour le texte de résumé
+  let summaryText = '';
+  if (score >= 90) {
+    summaryText = 'Excellente sécurité! Votre système est bien protégé.';
+  } else if (score >= 70) {
+    summaryText = 'Bonne sécurité. Quelques améliorations mineures possibles.';
+  } else if (score >= 50) {
+    summaryText = 'Sécurité moyenne. Des corrections importantes sont recommandées.';
+  } else {
+    summaryText = 'Sécurité insuffisante. Des actions immédiates sont nécessaires!';
+  }
+  
+  document.getElementById('security-summary-text').innerText = summaryText;
+}
+
+// Fonction pour exécuter un audit de sécurité
+async function runSecurityAudit() {
+  showAlert('Audit de sécurité en cours...', 'info');
+  
+  try {
+    const response = await fetch('/api/security/audit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': appState.apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'audit de sécurité');
+    }
+    
+    const data = await response.json();
+    updateSecurityDashboard(data);
+    showAlert('Audit de sécurité terminé avec succès!', 'success');
+  } catch (error) {
+    console.error('Erreur lors de l\'audit de sécurité:', error);
+    showAlert('Erreur lors de l\'audit de sécurité: ' + error.message, 'error');
+  }
+}
+
+// Fonction pour récupérer les données de sécurité
+async function fetchSecurityData() {
+  try {
+    const response = await fetch('/api/security/data');
+    
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des données de sécurité');
+    }
+    
+    const data = await response.json();
+    updateSecurityDashboard(data);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des données de sécurité:', error);
+  }
+}
+
+// Fonction pour mettre à jour le tableau de bord de sécurité
+function updateSecurityDashboard(data) {
+  securityData = data;
+  
+  // Mettre à jour l'heure du dernier audit
+  if (data.lastAuditTime) {
+    const date = new Date(data.lastAuditTime);
+    document.getElementById('last-audit-time').innerText = date.toLocaleString();
+  }
+  
+  // Mettre à jour le score de sécurité
+  if (data.securityScore !== null) {
+    updateSecurityScore(data.securityScore);
+  }
+  
+  // Mettre à jour le tableau des ports ouverts
+  updateOpenPortsTable(data.openPorts);
+  
+  // Mettre à jour le tableau des utilisateurs root
+  updateRootUsersTable(data.rootUsers);
+  
+  // Mettre à jour le tableau des services exposés
+  updateExposedServicesTable(data.exposedServices);
+  
+  // Mettre à jour le tableau des vulnérabilités
+  updateVulnerabilitiesTable(data.vulnerabilities);
+  
+  // Mettre à jour le tableau des fichiers modifiés
+  updateModifiedFilesTable(data.modifiedFiles);
+}
+
+// Fonction pour mettre à jour le tableau des ports ouverts
+function updateOpenPortsTable(ports) {
+  const table = document.getElementById('open-ports-table');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  if (!ports || ports.length === 0) {
+    tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Aucun port ouvert détecté</td></tr>';
+    document.getElementById('ports-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+    return;
+  }
+  
+  // Compter les ports à risque
+  const riskyPorts = ports.filter(port => port.risk !== 'low').length;
+  
+  // Mettre à jour le statut
+  if (riskyPorts > 0) {
+    document.getElementById('ports-status').innerHTML = 
+      `<i class="fas fa-exclamation-circle status-warning"></i> ${riskyPorts} à risque`;
+  } else {
+    document.getElementById('ports-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+  }
+  
+  // Remplir le tableau
+  ports.forEach(port => {
+    const tr = document.createElement('tr');
+    
+    const portTd = document.createElement('td');
+    portTd.textContent = port.port;
+    
+    const serviceTd = document.createElement('td');
+    serviceTd.textContent = port.service;
+    
+    const stateTd = document.createElement('td');
+    stateTd.textContent = port.state;
+    
+    const riskTd = document.createElement('td');
+    const riskBadge = document.createElement('span');
+    riskBadge.className = `risk-badge risk-${port.risk}`;
+    riskBadge.textContent = port.risk;
+    riskTd.appendChild(riskBadge);
+    
+    tr.appendChild(portTd);
+    tr.appendChild(serviceTd);
+    tr.appendChild(stateTd);
+    tr.appendChild(riskTd);
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Fonction pour mettre à jour le tableau des utilisateurs root
+function updateRootUsersTable(users) {
+  const table = document.getElementById('root-users-table');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  if (!users || users.length === 0) {
+    tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Aucun utilisateur root trouvé</td></tr>';
+    document.getElementById('users-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+    return;
+  }
+  
+  // Mettre à jour le statut
+  const tooManyRootUsers = users.length > 1;
+  if (tooManyRootUsers) {
+    document.getElementById('users-status').innerHTML = 
+      `<i class="fas fa-exclamation-circle status-warning"></i> ${users.length} utilisateurs`;
+  } else {
+    document.getElementById('users-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+  }
+  
+  // Remplir le tableau
+  users.forEach(user => {
+    const tr = document.createElement('tr');
+    
+    const usernameTd = document.createElement('td');
+    usernameTd.textContent = user.username;
+    
+    const uidTd = document.createElement('td');
+    uidTd.textContent = user.uid;
+    
+    const groupTd = document.createElement('td');
+    groupTd.textContent = user.group;
+    
+    const shellTd = document.createElement('td');
+    shellTd.textContent = user.shell;
+    
+    tr.appendChild(usernameTd);
+    tr.appendChild(uidTd);
+    tr.appendChild(groupTd);
+    tr.appendChild(shellTd);
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Fonction pour mettre à jour le tableau des services exposés
+function updateExposedServicesTable(services) {
+  const table = document.getElementById('exposed-services-table');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  if (!services || services.length === 0) {
+    tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Aucun service exposé détecté</td></tr>';
+    document.getElementById('services-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+    return;
+  }
+  
+  // Compter les services à risque
+  const riskyServices = services.filter(service => service.risk !== 'low').length;
+  
+  // Mettre à jour le statut
+  if (riskyServices > 0) {
+    document.getElementById('services-status').innerHTML = 
+      `<i class="fas fa-exclamation-circle status-warning"></i> ${riskyServices} à risque`;
+  } else {
+    document.getElementById('services-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+  }
+  
+  // Remplir le tableau
+  services.forEach(service => {
+    const tr = document.createElement('tr');
+    
+    const serviceTd = document.createElement('td');
+    serviceTd.textContent = service.name;
+    
+    const portTd = document.createElement('td');
+    portTd.textContent = service.port;
+    
+    const stateTd = document.createElement('td');
+    stateTd.textContent = service.state;
+    
+    const riskTd = document.createElement('td');
+    const riskBadge = document.createElement('span');
+    riskBadge.className = `risk-badge risk-${service.risk}`;
+    riskBadge.textContent = service.risk;
+    riskTd.appendChild(riskBadge);
+    
+    tr.appendChild(serviceTd);
+    tr.appendChild(portTd);
+    tr.appendChild(stateTd);
+    tr.appendChild(riskTd);
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Fonction pour mettre à jour le tableau des vulnérabilités
+function updateVulnerabilitiesTable(vulnerabilities) {
+  const table = document.getElementById('vulnerabilities-table');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  if (!vulnerabilities || vulnerabilities.length === 0) {
+    tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Aucune vulnérabilité détectée</td></tr>';
+    document.getElementById('vulnerabilities-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+    return;
+  }
+  
+  // Compter les problèmes critiques
+  const criticalVulnerabilities = vulnerabilities.filter(v => v.level === 'high').length;
+  
+  // Mettre à jour le statut
+  if (criticalVulnerabilities > 0) {
+    document.getElementById('vulnerabilities-status').innerHTML = 
+      `<i class="fas fa-exclamation-triangle status-critical"></i> ${criticalVulnerabilities} critique(s)`;
+  } else {
+    document.getElementById('vulnerabilities-status').innerHTML = 
+      `<i class="fas fa-exclamation-circle status-warning"></i> ${vulnerabilities.length} mineur(s)`;
+  }
+  
+  // Remplir le tableau
+  vulnerabilities.forEach(vulnerability => {
+    const tr = document.createElement('tr');
+    
+    const issueTd = document.createElement('td');
+    issueTd.textContent = vulnerability.issue;
+    
+    const descriptionTd = document.createElement('td');
+    descriptionTd.textContent = vulnerability.description;
+    
+    const levelTd = document.createElement('td');
+    const levelBadge = document.createElement('span');
+    levelBadge.className = `risk-badge risk-${vulnerability.level}`;
+    levelBadge.textContent = vulnerability.level;
+    levelTd.appendChild(levelBadge);
+    
+    const recommendationTd = document.createElement('td');
+    recommendationTd.textContent = vulnerability.recommendation;
+    
+    tr.appendChild(issueTd);
+    tr.appendChild(descriptionTd);
+    tr.appendChild(levelTd);
+    tr.appendChild(recommendationTd);
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Fonction pour mettre à jour le tableau des fichiers modifiés
+function updateModifiedFilesTable(files) {
+  const table = document.getElementById('modified-files-table');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  if (!files || files.length === 0) {
+    tbody.innerHTML = '<tr class="placeholder-row"><td colspan="4">Aucun fichier modifié récemment</td></tr>';
+    document.getElementById('files-status').innerHTML = '<i class="fas fa-check-circle status-good"></i>';
+    return;
+  }
+  
+  // Mettre à jour le statut
+  document.getElementById('files-status').innerHTML = 
+    `<i class="fas fa-info-circle"></i> ${files.length} fichiers`;
+  
+  // Remplir le tableau
+  files.forEach(file => {
+    const tr = document.createElement('tr');
+    
+    const filenameTd = document.createElement('td');
+    filenameTd.textContent = file.name;
+    
+    const pathTd = document.createElement('td');
+    pathTd.textContent = file.path;
+    
+    const modificationDateTd = document.createElement('td');
+    modificationDateTd.textContent = new Date(file.mtime).toLocaleString();
+    
+    const userTd = document.createElement('td');
+    userTd.textContent = file.user;
+    
+    tr.appendChild(filenameTd);
+    tr.appendChild(pathTd);
+    tr.appendChild(modificationDateTd);
+    tr.appendChild(userTd);
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// Fonction pour exporter le rapport de sécurité
+function exportSecurityReport() {
+  if (!securityData.lastAuditTime) {
+    showAlert('Veuillez effectuer un audit de sécurité avant d\'exporter le rapport', 'warning');
+    return;
+  }
+  
+  // Créer le rapport HTML
+  let reportContent = `
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <title>Rapport de Sécurité - LaborEssence Dashboard</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #333; }
+        .report-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .report-header { text-align: center; margin-bottom: 30px; }
+        .report-header h1 { margin-bottom: 10px; color: #2496ed; }
+        .report-header p { color: #666; }
+        .report-section { margin-bottom: 30px; }
+        .report-section h2 { color: #2496ed; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f8f8; }
+        .score-section { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+        .score-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; }
+        .risk-badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .risk-low { background-color: #27ae60; color: white; }
+        .risk-medium { background-color: #f39c12; color: white; }
+        .risk-high { background-color: #e74c3c; color: white; }
+        .footer { text-align: center; margin-top: 40px; color: #888; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="report-container">
+        <div class="report-header">
+          <h1>Rapport d'audit de sécurité</h1>
+          <p>Généré le ${new Date().toLocaleString()} via LaborEssence Dashboard</p>
+        </div>
+        
+        <div class="report-section">
+          <h2>Résumé de la sécurité</h2>
+          <div class="score-section">
+            <div class="score-circle" style="background-color: ${securityData.securityScore >= 70 ? '#27ae60' : securityData.securityScore >= 50 ? '#f39c12' : '#e74c3c'}">
+              ${securityData.securityScore}%
+            </div>
+            <div>
+              <p><strong>Dernier audit:</strong> ${new Date(securityData.lastAuditTime).toLocaleString()}</p>
+              <p><strong>Résumé:</strong> ${document.getElementById('security-summary-text').innerText}</p>
+            </div>
+          </div>
+        </div>
+  `;
+  
+  // Ajouter les sections du rapport
+  
+  // Ports ouverts
+  reportContent += `
+    <div class="report-section">
+      <h2>Ports ouverts</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Port</th>
+            <th>Service</th>
+            <th>État</th>
+            <th>Risque</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  if (securityData.openPorts && securityData.openPorts.length > 0) {
+    securityData.openPorts.forEach(port => {
+      reportContent += `
+        <tr>
+          <td>${port.port}</td>
+          <td>${port.service}</td>
+          <td>${port.state}</td>
+          <td><span class="risk-badge risk-${port.risk}">${port.risk}</span></td>
+        </tr>
+      `;
+    });
+  } else {
+    reportContent += `<tr><td colspan="4" style="text-align: center;">Aucun port ouvert détecté</td></tr>`;
+  }
+  
+  reportContent += `
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  // Utilisateurs root
+  reportContent += `
+    <div class="report-section">
+      <h2>Utilisateurs avec privilèges root</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>UID</th>
+            <th>Groupe</th>
+            <th>Shell</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  if (securityData.rootUsers && securityData.rootUsers.length > 0) {
+    securityData.rootUsers.forEach(user => {
+      reportContent += `
+        <tr>
+          <td>${user.username}</td>
+          <td>${user.uid}</td>
+          <td>${user.group}</td>
+          <td>${user.shell}</td>
+        </tr>
+      `;
+    });
+  } else {
+    reportContent += `<tr><td colspan="4" style="text-align: center;">Aucun utilisateur root trouvé</td></tr>`;
+  }
+  
+  reportContent += `
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  // Vulnérabilités
+  reportContent += `
+    <div class="report-section">
+      <h2>Vulnérabilités détectées</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Problème</th>
+            <th>Description</th>
+            <th>Niveau</th>
+            <th>Recommandation</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  if (securityData.vulnerabilities && securityData.vulnerabilities.length > 0) {
+    securityData.vulnerabilities.forEach(vulnerability => {
+      reportContent += `
+        <tr>
+          <td>${vulnerability.issue}</td>
+          <td>${vulnerability.description}</td>
+          <td><span class="risk-badge risk-${vulnerability.level}">${vulnerability.level}</span></td>
+          <td>${vulnerability.recommendation}</td>
+        </tr>
+      `;
+    });
+  } else {
+    reportContent += `<tr><td colspan="4" style="text-align: center;">Aucune vulnérabilité détectée</td></tr>`;
+  }
+  
+  reportContent += `
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  // Fichiers modifiés
+  reportContent += `
+    <div class="report-section">
+      <h2>Fichiers modifiés récemment</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Fichier</th>
+            <th>Chemin</th>
+            <th>Date de modification</th>
+            <th>Utilisateur</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  if (securityData.modifiedFiles && securityData.modifiedFiles.length > 0) {
+    securityData.modifiedFiles.forEach(file => {
+      reportContent += `
+        <tr>
+          <td>${file.name}</td>
+          <td>${file.path}</td>
+          <td>${new Date(file.mtime).toLocaleString()}</td>
+          <td>${file.user}</td>
+        </tr>
+      `;
+    });
+  } else {
+    reportContent += `<tr><td colspan="4" style="text-align: center;">Aucun fichier modifié récemment</td></tr>`;
+  }
+  
+  reportContent += `
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="footer">
+      <p>Ce rapport a été généré automatiquement par LaborEssence Dashboard. Pour plus d'informations, veuillez consulter la documentation.</p>
+    </div>
+    
+    </div>
+    </body>
+    </html>
+  `;
+  
+  // Créer un blob avec le contenu du rapport
+  const blob = new Blob([reportContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  
+  // Créer un lien pour télécharger le rapport
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `rapport-securite-${new Date().toISOString().slice(0, 10)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showAlert('Rapport de sécurité exporté avec succès', 'success');
+} 
