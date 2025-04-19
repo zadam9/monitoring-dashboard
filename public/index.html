@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaborEssence - Dashboard Docker</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard">
+    <!-- En-tête -->
+    <header>
+      <div class="logo">
+        <i class="fab fa-docker"></i>
+        <h1>LaborEssence</h1>
+      </div>
+      <div class="subtitle">Dashboard de Monitoring Docker</div>
+      <div class="system-status" id="system-uptime">
+        Uptime: Chargement...
+      </div>
+    </header>
+    
+    <!-- Statistiques Système -->
+    <section class="stats-cards">
+      <div class="card" id="server-status">
+        <div class="card-icon">
+          <i class="fas fa-server"></i>
+        </div>
+        <div class="card-content">
+          <h3>Serveur</h3>
+          <p class="status-indicator">Chargement...</p>
+          <div class="details">
+            <p>Hostname: <span id="hostname">-</span></p>
+            <p>Platform: <span id="platform">-</span></p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card" id="memory-status">
+        <div class="card-icon">
+          <i class="fas fa-memory"></i>
+        </div>
+        <div class="card-content">
+          <h3>Mémoire</h3>
+          <div class="progress-bar">
+            <div class="progress" id="memory-usage-bar"></div>
+          </div>
+          <p id="memory-usage">Chargement...</p>
+        </div>
+      </div>
+      
+      <div class="card" id="cpu-status">
+        <div class="card-icon">
+          <i class="fas fa-microchip"></i>
+        </div>
+        <div class="card-content">
+          <h3>CPU</h3>
+          <div class="progress-bar">
+            <div class="progress" id="cpu-usage-bar"></div>
+          </div>
+          <p id="cpu-usage">Chargement...</p>
+        </div>
+      </div>
+      
+      <div class="card" id="website-status">
+        <div class="card-icon">
+          <i class="fas fa-globe"></i>
+        </div>
+        <div class="card-content">
+          <h3>Site Principal</h3>
+          <p class="status-indicator" id="site-status-indicator">Chargement...</p>
+          <div class="details">
+            <p>HTTPS: <span id="https-status">-</span></p>
+            <p>Code: <span id="status-code">-</span></p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Graphiques -->
+    <section class="charts-section">
+      <div class="chart-container">
+        <h3><i class="fas fa-chart-line"></i> Historique CPU & RAM</h3>
+        <canvas id="resources-chart"></canvas>
+      </div>
+    </section>
+    
+    <!-- Containers Docker -->
+    <section class="containers-section">
+      <h2><i class="fab fa-docker"></i> Containers Docker</h2>
+      <div class="container-count">
+        <span id="active-containers">0</span> actifs / <span id="total-containers">0</span> total
+      </div>
+      <div class="containers-list" id="containers-list">
+        <div class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Chargement des containers...</p>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Logs -->
+    <section class="logs-section" id="logs-section">
+      <h2><i class="fas fa-terminal"></i> Logs</h2>
+      <div class="logs-selector">
+        <select id="container-selector">
+          <option value="">Sélectionner un container</option>
+        </select>
+        <button id="refresh-logs"><i class="fas fa-sync-alt"></i> Rafraîchir</button>
+      </div>
+      <div class="logs-container">
+        <pre id="logs-output">Sélectionnez un container pour voir ses logs</pre>
+      </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2023 LaborEssence - Dashboard créé par Adam</p>
+      <div class="version">v1.0.0</div>
+    </footer>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html> 
