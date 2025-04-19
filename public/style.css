@@ -9,10 +9,10 @@
   --text-secondary: #666;
   --text-muted: #999;
   --border-color: #eaeaea;
-  --success-color: #27ae60;
-  --warning-color: #f39c12;
-  --danger-color: #e74c3c;
-  --info-color: #3498db;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --info-color: #17a2b8;
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   --hover-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
   --border-radius: 8px;
@@ -2039,4 +2039,80 @@ select {
     gap: 1rem;
     text-align: center;
   }
+}
+
+/* Ajout pour l'indicateur de chargement et statut */
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  height: 40px;
+  margin: 10px 0;
+  padding: 10px;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--primary-color-light);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--card-bg);
+  border-radius: 5px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.loading-text, .success-text, .error-text, .info-text {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.loading-text i, .success-text i, .error-text i, .info-text i {
+  margin-right: 8px;
+}
+
+.loading-text {
+  color: var(--text-secondary);
+}
+
+.success-text {
+  color: var(--success-color);
+}
+
+.error-text {
+  color: var(--danger-color);
+}
+
+.info-text {
+  color: var(--info-color);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+/* Variables de couleurs pour les statuts */
+:root {
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --info-color: #17a2b8;
 } 

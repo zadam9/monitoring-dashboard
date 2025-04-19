@@ -553,6 +553,12 @@ function switchSection(sectionId) {
   
   // Sauvegarder la section active
   appState.activeSection = sectionId;
+  
+  // Actions spécifiques selon la section
+  if (sectionId === 'security-section') {
+    console.log('📣 [DEBUG] Changement vers la section sécurité, chargement des données...');
+    fetchSecurityData();
+  }
 }
 
 // Fonction pour basculer la sidebar
@@ -1640,9 +1646,22 @@ async function runSecurityAudit() {
 }
 
 // Fonction pour récupérer les données de sécurité
-async function fetchSecurityData() {
+async function fetchSecurityData(retryCount = 0) {
   try {
     console.log('📣 [DEBUG] Appel à fetchSecurityData() - Début');
+    
+    // Montrer un indicateur de chargement
+    const loadingIndicator = document.querySelector('#security-section .loading-indicator');
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'flex';
+    }
+    
+    // Ajouter un indicateur d'état
+    const statusElement = document.getElementById('security-status');
+    if (statusElement) {
+      statusElement.innerHTML = '<span class="loading-text"><i class="fas fa-spinner fa-spin"></i> Chargement des données de sécurité...</span>';
+    }
+    
     const apiBase = window.location.origin; // Utiliser l'origine du site actuel
     
     const response = await fetch(`${apiBase}/api/security/data`, {
@@ -1658,10 +1677,46 @@ async function fetchSecurityData() {
     console.log('📣 [DEBUG] Données de sécurité reçues, traitement...');
     const data = await response.json();
     console.log('📣 [DEBUG] Données JSON parsées:', data);
+    
+    // Cacher l'indicateur de chargement
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'none';
+    }
+    
+    // Mise à jour du statut
+    if (statusElement) {
+      const date = new Date();
+      statusElement.innerHTML = `<span class="success-text"><i class="fas fa-check-circle"></i> Données actualisées à ${date.toLocaleTimeString()}</span>`;
+    }
+    
     updateSecurityDashboard(data);
     
   } catch (error) {
     console.error('❌ [ERREUR] lors du chargement des données de sécurité:', error);
+    
+    // Cacher l'indicateur de chargement
+    const loadingIndicator = document.querySelector('#security-section .loading-indicator');
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'none';
+    }
+    
+    // Mise à jour du statut d'erreur
+    const statusElement = document.getElementById('security-status');
+    if (statusElement) {
+      statusElement.innerHTML = `<span class="error-text"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</span>`;
+    }
+    
+    // Si moins de 3 tentatives, réessayer après un délai
+    if (retryCount < 3) {
+      console.log(`📣 [DEBUG] Nouvelle tentative ${retryCount + 1}/3 dans 3 secondes...`);
+      
+      setTimeout(() => {
+        fetchSecurityData(retryCount + 1);
+      }, 3000);
+      
+      return;
+    }
+    
     showAlert('Erreur lors du chargement des données de sécurité: ' + error.message, 'danger');
     
     // Afficher l'état d'erreur dans l'interface
@@ -2191,9 +2246,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialiser les graphiques
   initAllCharts();
   
-  // Chargement initial des données
+  // Charger l'historique initial
+  loadHistory('24h');
+  
+  // Charger explicitement les données de sécurité au démarrage
+  console.log('📣 [DEBUG] Chargement initial des données de sécurité...');
   fetchSecurityData();
-  loadHistory(appState.currentHistoryPeriod);
   
   // Appliquer le thème sauvegardé
   switchTheme(appState.selectedTheme);
@@ -2207,6 +2265,12 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       const sectionId = link.getAttribute('href').substring(1); // Enlever le #
       switchSection(sectionId);
+      
+      // Si on clique sur la section de sécurité, charger les données
+      if (sectionId === 'security-section') {
+        console.log('📣 [DEBUG] Chargement des données de sécurité depuis le clic...');
+        fetchSecurityData();
+      }
       
       // Fermer la sidebar sur mobile après la navigation
       if (window.innerWidth < 768) {
@@ -2234,8 +2298,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Gestionnaire pour le bouton d'audit de sécurité
   document.getElementById('run-audit-btn').addEventListener('click', runSecurityAudit);
   
-  // Lancer le rafraîchissement automatique des données toutes les 30 secondes
-  setInterval(fetchSecurityData, 30000);
+  // Lancer le rafraîchissement automatique des données toutes les 30 secondes,
+  // mais uniquement si on est sur la section sécurité
+  setInterval(() => {
+    if (appState.activeSection === 'security-section') {
+      console.log('📣 [DEBUG] Rafraîchissement automatique des données de sécurité...');
+      fetchSecurityData();
+    }
+  }, 30000);
   
   console.log('📣 [DEBUG] Initialisation terminée');
 }); 
