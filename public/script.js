@@ -43,16 +43,8 @@ let cpuDonutChart, memoryDonutChart, resourcesChart;
 let cpuHistoryChart, memoryHistoryChart, uptimeHistoryChart, websiteHistoryChart;
 
 // Variables pour le tableau de bord de sécurité
-let securityScoreChart;
-let securityData = {
-  lastAuditTime: null,
-  securityScore: null,
-  openPorts: [],
-  rootUsers: [],
-  exposedServices: [],
-  vulnerabilities: [],
-  modifiedFiles: []
-};
+let securityData = null;
+let securityScoreChart = null;
 
 // Fonction pour obtenir l'heure actuelle formatée
 function getCurrentTime() {
@@ -374,46 +366,13 @@ function initHistoryCharts() {
   });
 }
 
-// Fonction pour initialiser les graphiques relatifs à la sécurité
-function initSecurityCharts() {
-  const securityScoreCtx = document.getElementById('security-score-chart').getContext('2d');
-  securityScoreChart = new Chart(securityScoreCtx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Score', 'Restant'],
-      datasets: [{
-        data: [0, 100],
-        backgroundColor: [
-          '#27ae60',
-          'rgba(200, 200, 200, 0.2)'
-        ],
-        borderWidth: 0,
-        cutout: '75%'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: appState.animationEnabled ? 1000 : 0
-      },
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          enabled: false
-        }
-      }
-    }
-  });
-}
-
 // Fonction pour initialiser tous les graphiques
 function initAllCharts() {
+  // Initialiser les charts principaux
   initCharts();
+  
+  // Initialiser les charts d'historique
   initHistoryCharts();
-  initSecurityCharts();
 }
 
 // Fonction pour mettre à jour les graphiques
@@ -533,12 +492,6 @@ function changeHistoryPeriod(period) {
 
 // Fonction pour changer de section
 function switchSection(sectionId) {
-  // Arrêter le rafraîchissement automatique des données de sécurité si un intervalle existe
-  if (appState.securityRefreshInterval) {
-    clearInterval(appState.securityRefreshInterval);
-    appState.securityRefreshInterval = null;
-  }
-  
   // Masquer toutes les sections
   document.querySelectorAll('.content-section').forEach(section => {
     section.classList.remove('active');
@@ -573,16 +526,6 @@ function switchSection(sectionId) {
     } else if (sectionId === 'logs-section') {
       // Mise à jour du sélecteur de containers
       updateContainerSelector();
-    } else if (sectionId === 'security-section') {
-      // Charger les données de sécurité automatiquement quand on accède à cette section
-      console.log('📣 [DEBUG] Chargement automatique des données de sécurité (changement de section)');
-      fetchSecurityData();
-      
-      // Configurer un rafraîchissement périodique des données de sécurité toutes les 2 minutes
-      appState.securityRefreshInterval = setInterval(() => {
-        console.log('📣 [DEBUG] Rafraîchissement automatique des données de sécurité');
-        fetchSecurityData();
-      }, 120000); // 2 minutes
     }
   }
 }
@@ -1354,10 +1297,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Charger l'historique initial
   loadHistory('24h');
   
-  // Charger explicitement les données de sécurité au démarrage
-  console.log('📣 [DEBUG] Chargement initial des données de sécurité...');
-  fetchSecurityData();
-  
   // Appliquer le thème sauvegardé
   switchTheme(appState.selectedTheme);
   
@@ -1371,30 +1310,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const sectionId = link.getAttribute('href').substring(1); // Enlever le #
       switchSection(sectionId);
       
-      // Si on clique sur la section de sécurité, charger les données
-      if (sectionId === 'security-section') {
-        console.log('📣 [DEBUG] Chargement des données de sécurité depuis le clic...');
-        fetchSecurityData();
-      }
-      
       // Fermer la sidebar sur mobile après la navigation
       if (window.innerWidth < 768) {
         document.querySelector('.sidebar').classList.add('collapsed');
       }
     });
   });
-  
-  // Vérifier si la section active est "security-section" et configurer l'intervalle de rafraîchissement
-  const activeSection = document.querySelector('.content-section.active');
-  if (activeSection && activeSection.id === 'security-section') {
-    console.log('📣 [DEBUG] Section sécurité active au démarrage, configuration du rafraîchissement automatique');
-    // Configurer le rafraîchissement périodique des données de sécurité
-    if (appState.securityRefreshInterval) {
-      clearInterval(appState.securityRefreshInterval);
-    }
-    appState.securityRefreshInterval = setInterval(() => {
-      console.log('📣 [DEBUG] Rafraîchissement automatique des données de sécurité');
-      fetchSecurityData();
-    }, 120000); // 2 minutes
-  }
 }); 

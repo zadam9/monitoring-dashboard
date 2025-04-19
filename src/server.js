@@ -441,35 +441,43 @@ io.on('connection', (socket) => {
 
 // Routes API pour la sécurité
 app.get('/api/security/data', async (req, res) => {
-  console.log('📣 [DEBUG] Appel à /api/security/data reçu');
-  try {
-    console.log('📣 [DEBUG] Début de getSecurityData()');
-    const securityData = await getSecurityData();
-    console.log('📣 [DEBUG] Données de sécurité obtenues:', JSON.stringify(securityData).substring(0, 200) + '...');
-    res.json(securityData);
-  } catch (error) {
-    console.error('❌ [ERREUR] lors de la récupération des données de sécurité:', error);
-    res.status(500).json({ error: error.message });
-  }
+  // Cette route est intentionnellement supprimée
+  res.status(404).json({ error: "Cette fonctionnalité a été désactivée" });
 });
 
 app.post('/api/security/audit', verifyApiKey, async (req, res) => {
-  console.log('📣 [DEBUG] Appel à /api/security/audit reçu');
-  try {
-    console.log('📣 [DEBUG] Début de runSecurityAudit()');
-    const auditResults = await runSecurityAudit();
-    console.log('📣 [DEBUG] Audit de sécurité terminé');
-    res.json(auditResults);
-  } catch (error) {
-    console.error('❌ [ERREUR] lors de l\'audit de sécurité:', error);
-    res.status(500).json({ error: error.message });
-  }
+  // Cette route est intentionnellement supprimée
+  res.status(404).json({ error: "Cette fonctionnalité a été désactivée" });
 });
 
+// Middleware de gestion d'erreurs
 app.use((err, req, res, next) => {
   console.error('Erreur interne:', err.stack);
   res.status(500).json({ error: 'Erreur interne du serveur' });
 });
+
+// Fonctions pour la sécurité
+async function getSecurityData() {
+  // Cette fonction est intentionnellement supprimée
+  return { error: "Cette fonctionnalité a été désactivée" };
+}
+
+async function runSecurityAudit() {
+  // Cette fonction est intentionnellement supprimée
+  return { error: "Cette fonctionnalité a été désactivée" };
+}
+
+// Exécution de commandes shell (utilisée pour les vérifications de sécurité)
+function executeCommand(command) {
+  // Cette fonction est intentionnellement supprimée
+  return Promise.resolve("Cette fonctionnalité a été désactivée");
+}
+
+// Fonction utilitaire pour identifier les services par port
+function getServiceName(port) {
+  // Cette fonction est intentionnellement supprimée
+  return "Service inconnu";
+}
 
 // Déplacer cette route à la fin pour qu'elle ne capture pas les routes API
 app.get('*', (req, res) => {
@@ -537,327 +545,6 @@ app.get('/api/containers/:id/info', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// Fonctions pour la sécurité
-async function getSecurityData() {
-  console.log('Début de l\'audit de sécurité');
-  try {
-    const results = {
-      openPorts: [],
-      rootUsers: [],
-      exposedServices: [],
-      vulnerabilities: [],
-      modifiedFiles: [],
-      securityScore: 0,
-      lastAudit: new Date().toISOString(),
-      summary: ''
-    };
-
-    // Log pour suivre l'exécution
-    console.log('Vérification des ports ouverts...');
-    
-    try {
-      // Vérification des ports ouverts avec ss au lieu de nmap pour plus de rapidité
-      const portsCommand = await executeCommand('ss -tuln');
-      const portLines = portsCommand.split('\n');
-      
-      // Filtrer pour obtenir uniquement les lignes avec des informations sur les ports
-      portLines.slice(1).forEach(line => {
-        if (line.includes('LISTEN')) {
-          const parts = line.trim().split(/\s+/);
-          if (parts.length >= 5) {
-            const addressPart = parts[4];
-            const portMatch = addressPart.match(/:(\d+)$/);
-            if (portMatch) {
-              const port = portMatch[1];
-              const protocol = line.includes('tcp') ? 'TCP' : 'UDP';
-              const service = getServiceName(port);
-              results.openPorts.push({ port, protocol, service });
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Erreur lors de la vérification des ports ouverts:', error.message);
-      console.error('Détails:', error.stack);
-      results.errors = results.errors || {};
-      results.errors.openPorts = `Erreur: ${error.message}`;
-    }
-    
-    // Log pour suivre l'exécution
-    console.log('Vérification des utilisateurs root...');
-    
-    try {
-      // Vérification des utilisateurs root
-      const rootUsersCommand = await executeCommand('grep "sudo\\|root" /etc/passwd || echo "Aucun utilisateur root trouvé"');
-      rootUsersCommand.split('\n').forEach(line => {
-        if (line && !line.includes('Aucun utilisateur root trouvé')) {
-          const username = line.split(':')[0];
-          results.rootUsers.push({ username, lastLogin: 'Inconnu' });
-        }
-      });
-    } catch (error) {
-      console.error('Erreur lors de la vérification des utilisateurs root:', error.message);
-      console.error('Détails:', error.stack);
-      results.errors = results.errors || {};
-      results.errors.rootUsers = `Erreur: ${error.message}`;
-    }
-    
-    // Log pour suivre l'exécution
-    console.log('Vérification des services exposés...');
-    
-    try {
-      // Vérification des services exposés
-      // Simuler la détection de services exposés en fonction des ports ouverts
-      results.openPorts.forEach(port => {
-        if (['80', '443', '22', '21', '3306', '5432'].includes(port.port)) {
-          results.exposedServices.push({
-            service: port.service || `Service sur port ${port.port}`,
-            port: port.port,
-            risk: port.port === '22' ? 'Moyen' : port.port === '21' ? 'Élevé' : 'Faible'
-          });
-        }
-      });
-    } catch (error) {
-      console.error('Erreur lors de la vérification des services exposés:', error.message);
-      console.error('Détails:', error.stack);
-      results.errors = results.errors || {};
-      results.errors.exposedServices = `Erreur: ${error.message}`;
-    }
-    
-    // Log pour suivre l'exécution
-    console.log('Vérification des vulnérabilités...');
-    
-    try {
-      // Simulation de la détection de vulnérabilités
-      // Dans un environnement réel, cela pourrait être remplacé par un outil comme Trivy
-      const vulnerabilitiesData = [
-        { id: 'CVE-2023-1234', package: 'openssl', severity: 'Élevé', description: 'Faille de sécurité dans OpenSSL' },
-        { id: 'CVE-2023-5678', package: 'bash', severity: 'Moyen', description: 'Vulnérabilité dans Bash shell' }
-      ];
-      
-      // Simuler une découverte aléatoire de vulnérabilités
-      if (Math.random() > 0.7) {
-        results.vulnerabilities = vulnerabilitiesData;
-      }
-    } catch (error) {
-      console.error('Erreur lors de la vérification des vulnérabilités:', error.message);
-      console.error('Détails:', error.stack);
-      results.errors = results.errors || {};
-      results.errors.vulnerabilities = `Erreur: ${error.message}`;
-    }
-    
-    // Log pour suivre l'exécution
-    console.log('Vérification des fichiers modifiés récemment...');
-    
-    try {
-      // Vérification des fichiers système modifiés récemment
-      const modifiedFilesCommand = await executeCommand('find /etc -type f -mtime -7 -ls 2>/dev/null | head -5 || echo "Aucun fichier modifié récemment"');
-      modifiedFilesCommand.split('\n').forEach(line => {
-        if (line && !line.includes('Aucun fichier modifié récemment')) {
-          const parts = line.trim().split(/\s+/);
-          if (parts.length >= 11) {
-            const path = parts.slice(10).join(' ');
-            const date = `${parts[6]} ${parts[7]} ${parts[8]}`;
-            results.modifiedFiles.push({ path, date, user: parts[5] });
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Erreur lors de la vérification des fichiers modifiés:', error.message);
-      console.error('Détails:', error.stack);
-      results.errors = results.errors || {};
-      results.errors.modifiedFiles = `Erreur: ${error.message}`;
-    }
-    
-    // Calcul du score de sécurité
-    let score = 100;
-
-    // Réduire le score en fonction des problèmes trouvés
-    score -= results.openPorts.length * 5;
-    score -= results.rootUsers.length * 10;
-    score -= results.exposedServices.length * 7;
-    score -= results.vulnerabilities.length * 15;
-    score -= results.modifiedFiles.length * 3;
-
-    // Limiter le score entre 0 et 100
-    results.securityScore = Math.max(0, Math.min(100, score));
-
-    // Générer un résumé
-    if (results.securityScore >= 90) {
-      results.summary = 'Excellent niveau de sécurité';
-    } else if (results.securityScore >= 70) {
-      results.summary = 'Bon niveau de sécurité, quelques améliorations possibles';
-    } else if (results.securityScore >= 50) {
-      results.summary = 'Niveau de sécurité moyen, des corrections sont nécessaires';
-    } else {
-      results.summary = 'Niveau de sécurité faible, une action immédiate est requise';
-    }
-
-    console.log('Audit de sécurité terminé');
-    return results;
-  } catch (error) {
-    console.error('Erreur lors de l\'audit de sécurité:', error.message);
-    console.error('Stack trace complète:', error.stack);
-    return { 
-      error: true, 
-      message: `Erreur lors de l'audit de sécurité: ${error.message}`,
-      stack: error.stack,
-      securityScore: 0,
-      lastAudit: new Date().toISOString(),
-      summary: 'Erreur lors de l\'audit de sécurité'
-    };
-  }
-}
-
-async function runSecurityAudit() {
-  console.log('Exécution d\'un audit de sécurité complet...');
-  
-  try {
-    // Collecter les données de base avec getSecurityData
-    const securityData = await getSecurityData();
-    
-    // Données d'audit supplémentaires
-    const auditDetails = {
-      timestamp: new Date().toISOString(),
-      systemInfo: {},
-      processAudit: [],
-      networkAudit: [],
-      userAudit: []
-    };
-    
-    // Informations système
-    auditDetails.systemInfo = {
-      platform: os.platform(),
-      release: os.release(),
-      hostname: os.hostname(),
-      uptime: os.uptime(),
-      cpus: os.cpus().length,
-      totalMemory: os.totalmem(),
-      freeMemory: os.freemem(),
-      loadAvg: os.loadavg()
-    };
-    
-    // Promesses pour les scans supplémentaires
-    const auditPromises = [];
-    
-    // 1. Scan de port plus détaillé avec nmap si disponible
-    const nmapPromise = new Promise((resolve) => {
-      exec('nmap -sV -F localhost 2>/dev/null', (error, stdout) => {
-        console.log('Résultat du scan nmap détaillé:', error ? 'Indisponible' : 'OK');
-        
-        if (!error && stdout) {
-          // Analyser la sortie de nmap pour trouver des services avec versions
-          const services = [];
-          let currentPort = null;
-          
-          stdout.split('\n').forEach(line => {
-            // Rechercher les lignes de port
-            const portMatch = line.match(/(\d+)\/tcp\s+(\w+)\s+(.+)/);
-            if (portMatch) {
-              currentPort = {
-                port: parseInt(portMatch[1]),
-                state: portMatch[2],
-                service: portMatch[3].trim(),
-                version: ''
-              };
-              services.push(currentPort);
-            } 
-            // Rechercher les infos de version sur les lignes suivantes
-            else if (currentPort && line.includes('VERSION')) {
-              currentPort.version = line.trim();
-            }
-          });
-          
-          auditDetails.networkAudit = services;
-        }
-        resolve();
-      });
-    });
-    auditPromises.push(nmapPromise);
-    
-    // 2. Vérifier les processus qui consomment le plus de ressources
-    const processPromise = new Promise((resolve) => {
-      exec('ps aux --sort=-%mem | head -11', (error, stdout) => {
-        console.log('Résultat de l\'audit des processus:', error ? 'Indisponible' : 'OK');
-        
-        if (!error && stdout) {
-          const processes = [];
-          const lines = stdout.split('\n');
-          
-          // Ignorer la première ligne (en-tête)
-          for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const parts = line.split(/\s+/);
-            if (parts.length >= 11) {
-              processes.push({
-                user: parts[0],
-                pid: parts[1],
-                cpu: parseFloat(parts[2]),
-                mem: parseFloat(parts[3]),
-                vsz: parts[4],
-                rss: parts[5],
-                tty: parts[6],
-                stat: parts[7],
-                start: parts[8],
-                time: parts[9],
-                command: parts.slice(10).join(' ')
-              });
-            }
-          }
-          
-          auditDetails.processAudit = processes;
-        }
-        resolve();
-      });
-    });
-    auditPromises.push(processPromise);
-    
-    // 3. Auditer les utilisateurs connectés
-    const userPromise = new Promise((resolve) => {
-      exec('who', (error, stdout) => {
-        console.log('Résultat de l\'audit des utilisateurs:', error ? 'Indisponible' : 'OK');
-        
-        if (!error && stdout) {
-          const users = [];
-          stdout.split('\n').forEach(line => {
-            if (!line.trim()) return;
-            
-            const parts = line.split(/\s+/);
-            if (parts.length >= 5) {
-              users.push({
-                username: parts[0],
-                tty: parts[1],
-                date: `${parts[2]} ${parts[3]}`,
-                from: parts[4].replace(/\(|\)/g, '')
-              });
-            }
-          });
-          
-          auditDetails.userAudit = users;
-        }
-        resolve();
-      });
-    });
-    auditPromises.push(userPromise);
-    
-    // Attendre que tous les scans additionnels soient terminés
-    await Promise.all(auditPromises);
-    
-    // Fusionner les données d'audit avec les données de sécurité de base
-    return {
-      ...securityData,
-      auditDetails
-    };
-    
-  } catch (error) {
-    console.error('Erreur lors de l\'audit de sécurité approfondi:', error);
-    // En cas d'erreur, retourner les données standard
-    return await getSecurityData();
-  }
-}
 
 // Démarrage du serveur
 server.listen(PORT, '0.0.0.0', () => {

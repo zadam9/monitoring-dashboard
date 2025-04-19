@@ -1861,258 +1861,32 @@ select {
   }
 }
 
-/* Styles pour la section Sécurité */
-.security-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.security-overview {
-  margin-bottom: 1.5rem;
-}
-
-.security-score-card {
-  background-color: var(--card-bg);
-  border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-
-.security-score {
-  position: relative;
-  width: 120px;
-  height: 120px;
-}
-
-.security-score-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.security-summary {
-  flex: 1;
-}
-
-.security-summary h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-}
-
-.security-summary p {
-  margin-bottom: 1rem;
-  color: var(--text-secondary);
-}
-
-.last-audit-time {
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-}
-
-.security-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-.security-card {
-  background-color: var(--card-bg);
-  border-radius: 10px;
-  box-shadow: var(--card-shadow);
-  overflow: hidden;
-}
-
-.security-card .card-header {
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.security-card .card-content {
-  padding: 1rem 1.5rem;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.security-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.security-status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.status-good {
-  color: var(--success-color);
-}
-
-.status-warning {
-  color: var(--warning-color);
-}
-
-.status-critical {
-  color: var(--danger-color);
-}
-
-.security-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.security-table th, 
-.security-table td {
-  text-align: left;
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.security-table th {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.security-table td {
-  color: var(--text-secondary);
-}
-
-.security-table tr:last-child td {
-  border-bottom: none;
-}
-
-.placeholder-row td {
-  text-align: center;
-  color: var(--text-tertiary);
-}
-
-.risk-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.risk-low {
-  background-color: rgba(39, 174, 96, 0.15);
-  color: #27ae60;
-}
-
-.risk-medium {
-  background-color: rgba(243, 156, 18, 0.15);
-  color: #f39c12;
-}
-
-.risk-high {
-  background-color: rgba(231, 76, 60, 0.15);
-  color: #e74c3c;
-}
-
-.grid-item-wide {
-  grid-column: span 2;
-}
-
-@media (max-width: 992px) {
-  .security-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .grid-item-wide {
-    grid-column: auto;
-  }
-  
-  .security-score-card {
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    text-align: center;
-  }
-}
-
-/* Ajout pour l'indicateur de chargement et statut */
-.loading-indicator {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  height: 40px;
-  margin: 10px 0;
-  padding: 10px;
-}
-
-.spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid var(--primary-color-light);
-  border-top: 3px solid var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.status-bar {
-  display: flex;
-  align-items: center;
-  background-color: var(--card-bg);
-  border-radius: 5px;
-  padding: 10px 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.loading-text, .success-text, .error-text, .info-text {
-  display: flex;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.loading-text i, .success-text i, .error-text i, .info-text i {
-  margin-right: 8px;
-}
-
-.loading-text {
-  color: var(--text-secondary);
-}
-
-.success-text {
-  color: var(--success-color);
-}
-
-.error-text {
-  color: var(--danger-color);
-}
-
+/* Supprimer tous les styles de sécurité */
+.security-actions,
+.security-overview,
+.security-score-card,
+.security-score,
+.security-score-value,
+.security-summary,
+.security-grid,
+.security-card,
+.security-status,
+.security-status-indicator,
+.status-good,
+.status-warning, 
+.status-critical,
+.security-table,
+.risk-badge,
+.risk-low,
+.risk-medium,
+.risk-high,
+.grid-item-wide,
+.loading-indicator,
+.spinner,
+.status-bar,
+.loading-text, 
+.success-text, 
+.error-text, 
 .info-text {
-  color: var(--info-color);
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
-/* Variables de couleurs pour les statuts */
-:root {
-  --success-color: #28a745;
-  --warning-color: #ffc107;
-  --danger-color: #dc3545;
-  --info-color: #17a2b8;
+  /* Ces styles sont intentionnellement supprimés */
 } 
