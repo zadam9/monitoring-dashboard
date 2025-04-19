@@ -97,7 +97,23 @@ async function checkWebsiteStatus() {
 async function checkHttpsStatus() {
   return new Promise((resolve) => {
     exec('curl -s --head https://aitalla.cloud', (error, stdout, stderr) => {
-      resolve(!error);
+      if (error) {
+        console.error('Erreur lors de la vérification HTTPS:', error);
+        resolve(false);
+        return;
+      }
+      
+      // Vérifier si la réponse contient une ligne de statut HTTP valide
+      const statusLine = stdout.split('\n')[0];
+      const statusMatch = statusLine.match(/HTTP\/\d\.\d\s+(\d+)/);
+      
+      if (statusMatch && parseInt(statusMatch[1]) >= 200 && parseInt(statusMatch[1]) < 400) {
+        console.log('HTTPS actif avec statut:', statusMatch[1]);
+        resolve(true);
+      } else {
+        console.log('HTTPS inactif ou erreur dans la réponse');
+        resolve(false);
+      }
     });
   });
 }
