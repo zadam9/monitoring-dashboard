@@ -1424,6 +1424,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Fonction pour charger la documentation
 async function loadDocumentation() {
   try {
+    // Charger la documentation générale
     const response = await fetch('/api/documentation', {
       headers: {
         'x-api-key': appState.apiKey
@@ -1436,6 +1437,26 @@ async function loadDocumentation() {
 
     const documentation = await response.json();
     updateDocumentationUI(documentation);
+
+    // Mettre à jour les liens de documentation
+    const documentationLinks = document.querySelectorAll('.read-more');
+    documentationLinks.forEach(link => {
+      const title = link.closest('.documentation-item').querySelector('h4').textContent;
+      switch(title) {
+        case 'Prise en main':
+          link.href = '/docs/getting-started';
+          break;
+        case 'Fonctionnalités principales':
+          link.href = '/docs/features';
+          break;
+        case 'Documentation technique':
+          link.href = '/wiki/architecture';
+          break;
+        case 'Questions fréquentes':
+          link.href = '/wiki/api';
+          break;
+      }
+    });
   } catch (error) {
     console.error('Erreur lors du chargement de la documentation:', error);
     showAlert('Erreur lors du chargement de la documentation. Veuillez réessayer.', 'error');
