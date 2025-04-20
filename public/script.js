@@ -535,16 +535,136 @@ function toggleSidebar() {
   document.querySelector('.sidebar').classList.toggle('collapsed');
 }
 
-// Fonction pour changer de thème
-function switchTheme(theme) {
+// Fonction pour appliquer le thème
+function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
-  appState.selectedTheme = theme;
   
-  // Mettre à jour le checkbox du thème
-  const themeCheckbox = document.getElementById('checkbox');
-  themeCheckbox.checked = theme === 'dark';
+  // Mettre à jour les couleurs des graphiques
+  const isDark = theme === 'dark';
+  const textColor = isDark ? '#ffffff' : '#333333';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  
+  // Mettre à jour tous les graphiques
+  if (cpuDonutChart) {
+    cpuDonutChart.options.plugins.legend.labels.color = textColor;
+    cpuDonutChart.update();
+  }
+  if (memoryDonutChart) {
+    memoryDonutChart.options.plugins.legend.labels.color = textColor;
+    memoryDonutChart.update();
+  }
+  if (resourcesChart) {
+    resourcesChart.options.scales.x.grid.color = gridColor;
+    resourcesChart.options.scales.y.grid.color = gridColor;
+    resourcesChart.options.scales.x.ticks.color = textColor;
+    resourcesChart.options.scales.y.ticks.color = textColor;
+    resourcesChart.update();
+  }
 }
+
+// Fonction pour basculer le thème
+function switchTheme(theme) {
+  appState.selectedTheme = theme;
+  applyTheme(theme);
+  
+  // Mettre à jour l'interface
+  document.querySelectorAll('.theme-option').forEach(option => {
+    option.classList.toggle('active', option.dataset.theme === theme);
+  });
+  
+  // Mettre à jour le switch
+  const themeSwitch = document.querySelector('.theme-switch input');
+  if (themeSwitch) {
+    themeSwitch.checked = theme === 'dark';
+  }
+}
+
+// Fonction pour appliquer les paramètres d'apparence
+function applyAppearanceSettings() {
+  // Appliquer le thème
+  applyTheme(appState.selectedTheme);
+  
+  // Appliquer le mode compact
+  document.body.classList.toggle('compact-mode', appState.compactMode);
+  
+  // Appliquer les animations
+  document.body.classList.toggle('animations-enabled', appState.animationEnabled);
+  
+  // Appliquer la couleur principale
+  document.documentElement.style.setProperty('--primary-color', appState.primaryColor);
+  
+  // Mettre à jour les graphiques
+  if (cpuDonutChart) {
+    cpuDonutChart.data.datasets[0].backgroundColor[0] = appState.primaryColor;
+    cpuDonutChart.update();
+  }
+  if (memoryDonutChart) {
+    memoryDonutChart.data.datasets[0].backgroundColor[0] = appState.primaryColor;
+    memoryDonutChart.update();
+  }
+  if (resourcesChart) {
+    resourcesChart.data.datasets[0].borderColor = appState.primaryColor;
+    resourcesChart.data.datasets[0].backgroundColor = `${appState.primaryColor}20`;
+    resourcesChart.update();
+  }
+}
+
+// Initialisation au chargement
+document.addEventListener('DOMContentLoaded', function() {
+  // Récupérer les paramètres sauvegardés
+  const savedTheme = localStorage.getItem('theme');
+  const savedCompactMode = localStorage.getItem('compactMode') === 'true';
+  const savedAnimationEnabled = localStorage.getItem('animationEnabled') !== 'false';
+  const savedPrimaryColor = localStorage.getItem('primaryColor') || '#0db7ed';
+  
+  // Appliquer les paramètres
+  appState.selectedTheme = savedTheme || 'light';
+  appState.compactMode = savedCompactMode;
+  appState.animationEnabled = savedAnimationEnabled;
+  appState.primaryColor = savedPrimaryColor;
+  
+  // Appliquer les paramètres d'apparence
+  applyAppearanceSettings();
+  
+  // Gestionnaire pour le switch de thème
+  const themeSwitch = document.querySelector('.theme-switch input');
+  if (themeSwitch) {
+    themeSwitch.addEventListener('change', function() {
+      const newTheme = this.checked ? 'dark' : 'light';
+      switchTheme(newTheme);
+    });
+  }
+  
+  // Gestionnaires pour les paramètres d'apparence
+  document.querySelectorAll('.theme-option').forEach(option => {
+    option.addEventListener('click', function() {
+      const theme = this.dataset.theme;
+      switchTheme(theme);
+    });
+  });
+  
+  document.getElementById('compact-mode').addEventListener('change', function() {
+    appState.compactMode = this.checked;
+    localStorage.setItem('compactMode', this.checked);
+    applyAppearanceSettings();
+  });
+  
+  document.getElementById('chart-animations').addEventListener('change', function() {
+    appState.animationEnabled = this.checked;
+    localStorage.setItem('animationEnabled', this.checked);
+    applyAppearanceSettings();
+  });
+  
+  document.querySelectorAll('.color-option').forEach(option => {
+    option.addEventListener('click', function() {
+      const color = this.dataset.color;
+      appState.primaryColor = color;
+      localStorage.setItem('primaryColor', color);
+      applyAppearanceSettings();
+    });
+  });
+});
 
 // Fonction pour formater la taille de mémoire
 function formatMemorySize(bytes) {
@@ -1316,4 +1436,245 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+});
+
+// Fonction pour charger la documentation
+async function loadDocumentation() {
+  try {
+    const response = await fetch('/api/documentation');
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement de la documentation');
+    }
+    const documentation = await response.json();
+    updateDocumentationUI(documentation);
+  } catch (error) {
+    console.error('Erreur:', error);
+    showAlert('Erreur lors du chargement de la documentation', 'danger');
+  }
+}
+
+// Fonction pour mettre à jour l'interface de documentation
+function updateDocumentationUI(documentation) {
+  // Mise à jour des guides
+  const guidesContainer = document.querySelector('.documentation-content');
+  if (guidesContainer && documentation.guides) {
+    guidesContainer.innerHTML = documentation.guides.map(guide => `
+      <div class="documentation-item">
+        <h4>${guide.title}</h4>
+        <p>${guide.description}</p>
+        <a href="${guide.link}" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
+      </div>
+    `).join('');
+  }
+}
+
+// Fonction pour lancer un audit de sécurité
+async function runSecurityAudit() {
+  try {
+    const response = await fetch('/api/security/audit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': appState.apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'audit de sécurité');
+    }
+    
+    const auditResults = await response.json();
+    updateSecurityUI(auditResults);
+    showAlert('Audit de sécurité terminé avec succès', 'success');
+  } catch (error) {
+    console.error('Erreur:', error);
+    showAlert('Erreur lors de l\'audit de sécurité', 'danger');
+  }
+}
+
+// Fonction pour mettre à jour l'interface de sécurité
+function updateSecurityUI(securityData) {
+  // Mise à jour du score de sécurité
+  const scoreElement = document.getElementById('security-score-value');
+  if (scoreElement) {
+    scoreElement.textContent = securityData.score || '-';
+  }
+  
+  // Mise à jour de la date du dernier audit
+  const lastAuditElement = document.getElementById('last-audit-time');
+  if (lastAuditElement) {
+    lastAuditElement.textContent = securityData.lastAudit || '-';
+  }
+  
+  // Mise à jour des ports ouverts
+  updateTable('open-ports-table', securityData.openPorts);
+  
+  // Mise à jour des utilisateurs root
+  updateTable('root-users-table', securityData.rootUsers);
+  
+  // Mise à jour des vulnérabilités
+  updateTable('vulnerabilities-table', securityData.vulnerabilities);
+}
+
+// Fonction utilitaire pour mettre à jour les tableaux
+function updateTable(tableId, data) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
+  
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3">Aucune donnée disponible</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = data.map(item => `
+    <tr>
+      ${Object.values(item).map(value => `<td>${value}</td>`).join('')}
+    </tr>
+  `).join('');
+}
+
+// Ajout des écouteurs d'événements
+document.addEventListener('DOMContentLoaded', () => {
+  // Écouteur pour le bouton d'audit de sécurité
+  const auditButton = document.getElementById('run-security-audit');
+  if (auditButton) {
+    auditButton.addEventListener('click', runSecurityAudit);
+  }
+  
+  // Chargement initial de la documentation
+  loadDocumentation();
+});
+
+// Gestion des clics sur les liens de documentation
+document.addEventListener('DOMContentLoaded', function() {
+  const documentationLinks = document.querySelectorAll('.read-more');
+  
+  documentationLinks.forEach(link => {
+    link.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const href = this.getAttribute('href');
+      
+      try {
+        const response = await fetch(href);
+        const data = await response.json();
+        
+        // Créer une modale pour afficher le contenu
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>${data.title}</h3>
+              <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+              ${data.content}
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Gérer la fermeture de la modale
+        const closeButton = modal.querySelector('.modal-close');
+        closeButton.addEventListener('click', () => {
+          modal.remove();
+        });
+        
+        // Fermer la modale en cliquant en dehors
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      } catch (error) {
+        console.error('Erreur lors du chargement de la documentation:', error);
+        alert('Erreur lors du chargement de la documentation');
+      }
+    });
+  });
+});
+
+// Fonction pour exporter le rapport PDF
+async function exportReport() {
+  try {
+    // Récupérer les données nécessaires
+    const systemResponse = await fetch('/api/system');
+    const systemData = await systemResponse.json();
+    
+    const containersResponse = await fetch('/api/containers');
+    const containersData = await containersResponse.json();
+    
+    const securityResponse = await fetch('/api/security/data');
+    const securityData = await securityResponse.json();
+
+    // Créer un nouveau document PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Ajouter le titre
+    doc.setFontSize(20);
+    doc.text('Rapport de Monitoring Docker', 20, 20, { align: 'center' });
+    
+    // Ajouter la date
+    doc.setFontSize(12);
+    doc.text(`Généré le: ${new Date().toLocaleString()}`, 20, 30);
+    
+    // Informations système
+    doc.setFontSize(16);
+    doc.text('Informations Système', 20, 45);
+    doc.setFontSize(12);
+    doc.text(`Hostname: ${systemData.hostname}`, 20, 55);
+    doc.text(`Plateforme: ${systemData.platform}`, 20, 65);
+    doc.text(`Uptime: ${systemData.uptime}`, 20, 75);
+    doc.text(`CPU: ${systemData.cpuCount} cœurs`, 20, 85);
+    doc.text(`Mémoire totale: ${systemData.totalMemory} MB`, 20, 95);
+    
+    // Statistiques des conteneurs
+    doc.setFontSize(16);
+    doc.text('Statistiques des Conteneurs', 20, 115);
+    doc.setFontSize(12);
+    doc.text(`Nombre total de conteneurs: ${containersData.length}`, 20, 125);
+    doc.text(`Conteneurs en cours d'exécution: ${containersData.filter(c => c.state === 'running').length}`, 20, 135);
+    
+    // Liste des conteneurs
+    doc.setFontSize(16);
+    doc.text('Liste des Conteneurs', 20, 155);
+    doc.setFontSize(10);
+    let y = 165;
+    containersData.forEach(container => {
+      doc.text(`Nom: ${container.name}`, 20, y);
+      doc.text(`ID: ${container.id}`, 20, y + 5);
+      doc.text(`Image: ${container.image}`, 20, y + 10);
+      doc.text(`État: ${container.state}`, 20, y + 15);
+      doc.text(`Ports: ${container.ports || 'Aucun'}`, 20, y + 20);
+      y += 30;
+    });
+    
+    // Informations de sécurité
+    doc.setFontSize(16);
+    doc.text('Informations de Sécurité', 20, y + 10);
+    doc.setFontSize(12);
+    doc.text(`Score de sécurité: ${securityData.score}`, 20, y + 20);
+    doc.text(`Dernier audit: ${securityData.lastAudit}`, 20, y + 30);
+    
+    // Sauvegarder le PDF
+    doc.save(`rapport-monitoring-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    showAlert('Rapport PDF généré avec succès', 'success');
+  } catch (error) {
+    console.error('Erreur lors de la génération du rapport:', error);
+    showAlert('Erreur lors de la génération du rapport', 'danger');
+  }
+}
+
+// Ajouter l'écouteur d'événements pour le bouton d'export
+document.addEventListener('DOMContentLoaded', () => {
+  const exportButton = document.getElementById('export-report');
+  if (exportButton) {
+    exportButton.addEventListener('click', exportReport);
+  }
 }); 

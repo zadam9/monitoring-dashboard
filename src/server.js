@@ -8,12 +8,77 @@ const morgan = require('morgan');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs');
+const winston = require('winston');
+const nodemailer = require('nodemailer');
 
 // Initialisation de l'app
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 const docker = new Docker();
+
+// Configuration de la journalisation
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
+// Configuration des notifications
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
+
+// Fonction pour envoyer des notifications
+const sendNotification = async (subject, message) => {
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.ADMIN_EMAIL,
+      subject: `[Docker Monitor] ${subject}`,
+      html: `
+        <h2>${subject}</h2>
+        <p>${message}</p>
+        <p>Date: ${new Date().toLocaleString()}</p>
+      `
+    });
+    logger.info(`Notification envoyée: ${subject}`);
+  } catch (error) {
+    logger.error(`Erreur lors de l'envoi de la notification: ${error.message}`);
+  }
+};
+
+// Middleware pour journaliser les actions
+const logAction = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'] || req.query.api_key;
+  const role = getRoleFromApiKey(apiKey);
+  const action = `${req.method} ${req.path}`;
+  
+  logger.info({
+    timestamp: new Date().toISOString(),
+    role: role,
+    action: action,
+    params: req.params,
+    query: req.query,
+    body: req.body,
+    ip: req.ip
+  });
+  
+  next();
+};
+
+// Appliquer le middleware de journalisation à toutes les routes API
+app.use('/api', logAction);
 
 // Chemin des fichiers d'historique
 const DATA_DIR = path.join(__dirname, '../data');
@@ -74,15 +139,55 @@ const PORT = process.env.PORT || 8080;
 // En production, utilisez une variable d'environnement ou une configuration sécurisée
 const API_KEY = process.env.API_KEY || 'labordashboard2024';
 
-// Middleware pour vérifier l'API key
-const verifyApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'] || req.query.api_key;
-  
-  if (!apiKey || apiKey !== API_KEY) {
-    return res.status(401).json({ error: 'API key invalide ou manquante' });
+// Configuration des rôles et permissions
+const ROLES = {
+  ADMIN: 'admin',
+  OPERATOR: 'operator',
+  VIEWER: 'viewer'
+};
+
+const PERMISSIONS = {
+  [ROLES.ADMIN]: {
+    containers: ['create', 'read', 'update', 'delete', 'start', 'stop', 'restart'],
+    security: ['audit', 'configure'],
+    system: ['configure', 'monitor']
+  },
+  [ROLES.OPERATOR]: {
+    containers: ['read', 'start', 'stop', 'restart'],
+    security: ['audit'],
+    system: ['monitor']
+  },
+  [ROLES.VIEWER]: {
+    containers: ['read'],
+    security: ['read'],
+    system: ['monitor']
   }
+};
+
+// Middleware pour vérifier les permissions
+const checkPermission = (resource, action) => {
+  return (req, res, next) => {
+    const apiKey = req.headers['x-api-key'] || req.query.api_key;
+    const role = getRoleFromApiKey(apiKey);
+    
+    if (!role || !PERMISSIONS[role] || !PERMISSIONS[role][resource] || !PERMISSIONS[role][resource].includes(action)) {
+      return res.status(403).json({ error: 'Permission refusée' });
+    }
+    
+    next();
+  };
+};
+
+// Fonction pour obtenir le rôle à partir de la clé API
+const getRoleFromApiKey = (apiKey) => {
+  // En production, utilisez une base de données ou un service d'authentification
+  const apiKeys = {
+    'admin-key-2024': ROLES.ADMIN,
+    'operator-key-2024': ROLES.OPERATOR,
+    'viewer-key-2024': ROLES.VIEWER
+  };
   
-  next();
+  return apiKeys[apiKey];
 };
 
 // Fonction pour récupérer les statistiques système
@@ -92,24 +197,21 @@ async function getSystemStats() {
       uptime: os.uptime(),
       hostname: os.hostname(),
       platform: os.platform(),
+      userInfo: os.userInfo(),
       cpuCount: os.cpus().length,
       totalMemory: os.totalmem(),
       freeMemory: os.freemem(),
       loadAvg: os.loadavg(),
+      arch: os.arch(),
+      release: os.release()
     };
     
-    console.log('Stats système récupérées:', JSON.stringify(stats));
+    logger.info('Stats système récupérées:', JSON.stringify(stats));
     return stats;
   } catch (error) {
-    console.error('Erreur lors de la récupération des stats système:', error);
+    logger.error('Erreur lors de la récupération des stats système:', error);
     return {
-      uptime: 0,
-      hostname: 'Inconnu',
-      platform: 'Inconnu',
-      cpuCount: 0,
-      totalMemory: 0,
-      freeMemory: 0,
-      loadAvg: [0, 0, 0],
+      error: error.message
     };
   }
 }
@@ -240,7 +342,7 @@ async function checkHttpsStatus() {
 }
 
 // Routes API
-app.get('/api/containers', async (req, res) => {
+app.get('/api/containers', checkPermission('containers', 'read'), async (req, res) => {
   try {
     const containers = await getContainers();
     res.json(containers);
@@ -452,8 +554,24 @@ app.post('/api/security/audit', verifyApiKey, async (req, res) => {
 
 // Middleware de gestion d'erreurs
 app.use((err, req, res, next) => {
-  console.error('Erreur interne:', err.stack);
-  res.status(500).json({ error: 'Erreur interne du serveur' });
+  logger.error({
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
+
+  // Envoyer une notification pour les erreurs critiques
+  if (err.status >= 500) {
+    sendNotification(
+      'Erreur Critique',
+      `Une erreur critique s'est produite sur le serveur: ${err.message}`
+    );
+  }
+
+  res.status(err.status || 500).json({
+    error: err.message
+  });
 });
 
 // Fonctions pour la sécurité
@@ -473,10 +591,24 @@ function executeCommand(command) {
   return Promise.resolve("Cette fonctionnalité a été désactivée");
 }
 
-// Fonction utilitaire pour identifier les services par port
+// Fonction pour identifier les services sur les ports
 function getServiceName(port) {
-  // Cette fonction est intentionnellement supprimée
-  return "Service inconnu";
+  const commonPorts = {
+    '80': 'HTTP',
+    '443': 'HTTPS',
+    '22': 'SSH',
+    '21': 'FTP',
+    '25': 'SMTP',
+    '53': 'DNS',
+    '3306': 'MySQL',
+    '5432': 'PostgreSQL',
+    '27017': 'MongoDB',
+    '6379': 'Redis',
+    '8080': 'HTTP Alt',
+    '8443': 'HTTPS Alt'
+  };
+  
+  return commonPorts[port] || `Port ${port}`;
 }
 
 // Déplacer cette route à la fin pour qu'elle ne capture pas les routes API
@@ -485,7 +617,7 @@ app.get('*', (req, res) => {
 });
 
 // Route pour démarrer un container
-app.post('/api/containers/:id/start', verifyApiKey, async (req, res) => {
+app.post('/api/containers/:id/start', checkPermission('containers', 'start'), async (req, res) => {
   try {
     const containerId = req.params.id;
     console.log(`Démarrage du container ${containerId}`);
@@ -546,7 +678,264 @@ app.get('/api/containers/:id/info', async (req, res) => {
   }
 });
 
+// Routes pour la documentation
+app.get('/docs/getting-started', (req, res) => {
+  res.json({
+    title: 'Prise en main',
+    content: `
+      <h2>Bienvenue sur Motor</h2>
+      <p>Ce guide vous aidera à prendre en main le dashboard de monitoring Docker.</p>
+      <h3>Fonctionnalités principales</h3>
+      <ul>
+        <li>Surveillance en temps réel des conteneurs</li>
+        <li>Analyse des performances système</li>
+        <li>Gestion des logs</li>
+        <li>Audit de sécurité</li>
+      </ul>
+    `
+  });
+});
+
+app.get('/docs/features', (req, res) => {
+  res.json({
+    title: 'Fonctionnalités principales',
+    content: `
+      <h2>Fonctionnalités du dashboard</h2>
+      <h3>Monitoring</h3>
+      <ul>
+        <li>Utilisation CPU et mémoire en temps réel</li>
+        <li>Statut des conteneurs Docker</li>
+        <li>Historique des performances</li>
+      </ul>
+      <h3>Sécurité</h3>
+      <ul>
+        <li>Analyse des ports ouverts</li>
+        <li>Détection des utilisateurs root</li>
+        <li>Scan de vulnérabilités</li>
+      </ul>
+    `
+  });
+});
+
+app.get('/wiki/architecture', (req, res) => {
+  res.json({
+    title: 'Architecture',
+    content: `
+      <h2>Architecture du système</h2>
+      <p>Le dashboard est construit avec les technologies suivantes :</p>
+      <ul>
+        <li>Backend : Node.js avec Express</li>
+        <li>Frontend : HTML, CSS, JavaScript</li>
+        <li>Communication : WebSocket pour les mises à jour en temps réel</li>
+        <li>Docker : API pour l'interaction avec les conteneurs</li>
+      </ul>
+    `
+  });
+});
+
+app.get('/wiki/api', (req, res) => {
+  res.json({
+    title: 'API Documentation',
+    content: `
+      <h2>API REST</h2>
+      <h3>Endpoints disponibles</h3>
+      <ul>
+        <li>GET /api/containers - Liste des conteneurs</li>
+        <li>GET /api/system - Statistiques système</li>
+        <li>POST /api/security/audit - Audit de sécurité</li>
+        <li>GET /api/documentation - Documentation générale</li>
+      </ul>
+    `
+  });
+});
+
+// Route pour l'audit de sécurité
+app.post('/api/security/audit', verifyApiKey, async (req, res) => {
+  try {
+    const securityData = await getSecurityData();
+    res.json(securityData);
+  } catch (error) {
+    console.error('Erreur lors de l\'audit de sécurité:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fonction pour récupérer les données de sécurité
+async function getSecurityData() {
+  const openPorts = await checkOpenPorts();
+  const rootUsers = await checkRootUsers();
+  const vulnerabilities = await checkVulnerabilities();
+  
+  const score = calculateSecurityScore(openPorts, rootUsers, vulnerabilities);
+  
+  return {
+    score,
+    lastAudit: new Date().toISOString(),
+    openPorts,
+    rootUsers,
+    vulnerabilities
+  };
+}
+
+// Fonction pour vérifier les ports ouverts
+async function checkOpenPorts() {
+  try {
+    const { stdout } = await exec('netstat -tuln');
+    const ports = stdout.split('\n')
+      .filter(line => line.includes('LISTEN'))
+      .map(line => {
+        const parts = line.trim().split(/\s+/);
+        return {
+          port: parts[3].split(':').pop(),
+          service: getServiceName(parts[3].split(':').pop()),
+          state: 'Ouvert'
+        };
+      });
+    return ports;
+  } catch (error) {
+    console.error('Erreur lors de la vérification des ports:', error);
+    return [];
+  }
+}
+
+// Fonction pour vérifier les utilisateurs root
+async function checkRootUsers() {
+  try {
+    const containers = await docker.listContainers({ all: true });
+    const rootUsers = [];
+    
+    for (const container of containers) {
+      try {
+        const containerId = container.Id.substring(0, 12);
+        const containerName = container.Names[0].replace(/^\//, '');
+        
+        const { stdout } = await exec(`docker exec ${containerId} whoami`);
+        const user = stdout.trim();
+        
+        if (user === 'root') {
+          rootUsers.push({
+            container: containerName,
+            user: 'root',
+            state: 'Actif'
+          });
+        }
+      } catch (error) {
+        console.error(`Erreur lors de la vérification de l'utilisateur pour le conteneur ${container.Id}:`, error);
+      }
+    }
+    
+    return rootUsers;
+  } catch (error) {
+    console.error('Erreur lors de la vérification des utilisateurs root:', error);
+    return [];
+  }
+}
+
+// Fonction pour vérifier les vulnérabilités
+async function checkVulnerabilities() {
+  try {
+    const { stdout } = await exec('docker images --format "{{.Repository}}:{{.Tag}}" | xargs -I {} docker scan {}');
+    const vulnerabilities = stdout.split('\n')
+      .filter(line => line.includes('CRITICAL') || line.includes('HIGH'))
+      .map(line => {
+        const parts = line.split('|');
+        return {
+          type: parts[0].trim(),
+          description: parts[1].trim(),
+          level: parts[2].trim()
+        };
+      });
+    return vulnerabilities;
+  } catch (error) {
+    console.error('Erreur lors de la vérification des vulnérabilités:', error);
+    return [];
+  }
+}
+
+// Fonction pour calculer le score de sécurité
+function calculateSecurityScore(openPorts, rootUsers, vulnerabilities) {
+  let score = 100;
+  
+  // Pénalités pour les ports ouverts
+  score -= openPorts.length * 5;
+  
+  // Pénalités pour les utilisateurs root
+  score -= rootUsers.length * 10;
+  
+  // Pénalités pour les vulnérabilités
+  vulnerabilities.forEach(vuln => {
+    if (vuln.level === 'CRITICAL') score -= 20;
+    else if (vuln.level === 'HIGH') score -= 10;
+  });
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Configuration de la sauvegarde
+const BACKUP_DIR = path.join(__dirname, 'backups');
+const BACKUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 heures
+
+// Créer le dossier de sauvegarde s'il n'existe pas
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR);
+}
+
+// Fonction pour créer une sauvegarde
+const createBackup = async () => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(BACKUP_DIR, `config-${timestamp}.json`);
+    
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      containers: await docker.listContainers({ all: true }),
+      images: await docker.listImages(),
+      networks: await docker.listNetworks(),
+      volumes: await docker.listVolumes()
+    };
+
+    await fs.promises.writeFile(
+      backupPath,
+      JSON.stringify(backupData, null, 2)
+    );
+
+    logger.info(`Sauvegarde créée: ${backupPath}`);
+    
+    // Garder seulement les 5 dernières sauvegardes
+    const backups = fs.readdirSync(BACKUP_DIR)
+      .filter(file => file.startsWith('config-'))
+      .sort()
+      .reverse();
+    
+    if (backups.length > 5) {
+      for (const file of backups.slice(5)) {
+        fs.unlinkSync(path.join(BACKUP_DIR, file));
+      }
+    }
+  } catch (error) {
+    logger.error(`Erreur lors de la sauvegarde: ${error.message}`);
+    sendNotification(
+      'Erreur de Sauvegarde',
+      `La sauvegarde automatique a échoué: ${error.message}`
+    );
+  }
+};
+
+// Planifier les sauvegardes automatiques
+setInterval(createBackup, BACKUP_INTERVAL);
+createBackup(); // Créer une sauvegarde immédiate
+
+// Route pour créer une sauvegarde manuelle
+app.post('/api/backup', async (req, res) => {
+  try {
+    await createBackup();
+    res.json({ message: 'Sauvegarde créée avec succès' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Démarrage du serveur
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`LaborEssence Dashboard démarre sur http://0.0.0.0:${PORT}`);
+  console.log(`Motor Dashboard démarre sur http://0.0.0.0:${PORT}`);
 }); 

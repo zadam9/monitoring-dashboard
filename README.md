@@ -1,8 +1,8 @@
-# LaborEssence - Dashboard de Monitoring Docker
+# Motor - Dashboard de Monitoring Docker
 
 Un tableau de bord de monitoring en temps réel pour surveiller vos containers Docker, les ressources système et les statuts des sites web.
 
-![Dashboard Screenshot](https://via.placeholder.com/800x400?text=LaborEssence+Dashboard)
+![Dashboard Screenshot](https://via.placeholder.com/800x400?text=Motor+Dashboard)
 
 ## Fonctionnalités
 

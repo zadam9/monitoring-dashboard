@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="LaborEssence - Dashboard de monitoring Docker pour surveiller vos conteneurs et services">
+  <meta name="description" content="Motor - Dashboard de monitoring Docker pour surveiller vos conteneurs et services">
   <meta name="keywords" content="docker, monitoring, dashboard, containers, system, stats">
   <meta name="author" content="Adam">
-  <title>LaborEssence - Dashboard Docker</title>
+  <title>Motor - Dashboard Docker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -22,7 +23,7 @@
       <div class="sidebar-header">
         <div class="logo">
           <i class="fab fa-docker"></i>
-          <h1>LaborEssence</h1>
+          <h1>Motor</h1>
         </div>
         <button id="sidebar-toggle" class="sidebar-toggle">
           <i class="fas fa-bars"></i>
@@ -53,6 +54,18 @@
             <a href="#settings-section">
               <i class="fas fa-cog"></i>
               <span>Paramètres</span>
+            </a>
+          </li>
+          <li>
+            <a href="#security-section">
+              <i class="fas fa-shield-alt"></i>
+              <span>Sécurité</span>
+            </a>
+          </li>
+          <li>
+            <a href="#documentation-section">
+              <i class="fas fa-book"></i>
+              <span>Documentation</span>
             </a>
           </li>
         </ul>
@@ -467,7 +480,7 @@
           <div class="settings-card">
             <h3>À propos</h3>
             <div class="about-info">
-              <p><strong>LaborEssence Dashboard</strong> v1.2.0</p>
+              <p><strong>Motor Dashboard</strong> v1.2.0</p>
               <p>Créé par Adam</p>
               <p>Un dashboard de monitoring Docker en temps réel</p>
               <div class="about-links">
@@ -483,9 +496,145 @@
         </div>
       </div>
       
+      <!-- Documentation Section -->
+      <div id="documentation-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-book"></i> Documentation</h2>
+        </div>
+        
+        <div class="documentation-grid">
+          <div class="documentation-card">
+            <h3><i class="fas fa-info-circle"></i> Guide d'Utilisation</h3>
+            <div class="documentation-content">
+              <div class="documentation-item">
+                <h4>Prise en main</h4>
+                <p>Découvrez comment utiliser le dashboard de monitoring Docker.</p>
+                <a href="#" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
+              </div>
+              <div class="documentation-item">
+                <h4>Fonctionnalités principales</h4>
+                <p>Explorez les principales fonctionnalités du dashboard.</p>
+                <a href="#" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="documentation-card">
+            <h3><i class="fas fa-question-circle"></i> FAQ</h3>
+            <div class="documentation-content">
+              <div class="documentation-item">
+                <h4>Questions fréquentes</h4>
+                <p>Trouvez des réponses aux questions les plus courantes.</p>
+                <a href="#" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="documentation-card">
+            <h3><i class="fas fa-book-open"></i> Wiki</h3>
+            <div class="documentation-content">
+              <div class="documentation-item">
+                <h4>Documentation technique</h4>
+                <p>Accédez à la documentation technique détaillée.</p>
+                <a href="#" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Security Section -->
+      <div id="security-section" class="content-section">
+        <div class="section-header">
+          <h2><i class="fas fa-shield-alt"></i> Sécurité</h2>
+          <div class="security-actions">
+            <button id="run-security-audit" class="action-button">
+              <i class="fas fa-search"></i>
+              <span>Lancer un audit</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="security-grid">
+          <div class="security-card">
+            <h3><i class="fas fa-shield-virus"></i> Vulnérabilités</h3>
+            <div class="security-content">
+              <div class="security-score">
+                <div class="score-value" id="security-score-value">-</div>
+                <div class="score-label">Score de sécurité</div>
+              </div>
+              <div class="last-audit">
+                <span>Dernier audit:</span>
+                <span id="last-audit-time">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="security-card">
+            <h3><i class="fas fa-lock"></i> Ports ouverts</h3>
+            <div class="security-content">
+              <table id="open-ports-table">
+                <thead>
+                  <tr>
+                    <th>Port</th>
+                    <th>Service</th>
+                    <th>État</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="3">Aucune donnée disponible</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="security-card">
+            <h3><i class="fas fa-user-shield"></i> Utilisateurs root</h3>
+            <div class="security-content">
+              <table id="root-users-table">
+                <thead>
+                  <tr>
+                    <th>Container</th>
+                    <th>Utilisateur</th>
+                    <th>État</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="3">Aucune donnée disponible</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="security-card">
+            <h3><i class="fas fa-exclamation-triangle"></i> Vulnérabilités</h3>
+            <div class="security-content">
+              <table id="vulnerabilities-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Niveau</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="3">Aucune donnée disponible</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Footer -->
       <footer class="main-footer">
-        <p>&copy; 2023 LaborEssence - Dashboard créé par Adam</p>
+        <p>&copy; 2025 Motor - Dashboard créé par Adam</p>
       </footer>
     </main>
   </div>
