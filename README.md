@@ -89,4 +89,5 @@ Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de 
 
 ## Contact
 
-Pour toute question ou suggestion, contactez-nous à [contact@aitalla.cloud](mailto:contact@aitalla.cloud) 
+Pour toute question ou suggestion, contactez-nous à [contact@aitalla.cloud](mailto:adam.aitalla9@gmail.com)
+Je vous invite à voir mon portfolio à https://aitalla.cloud
