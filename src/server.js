@@ -11,6 +11,17 @@ const fs = require('fs');
 const winston = require('winston');
 const nodemailer = require('nodemailer');
 
+// Middleware de vérification de la clé API
+const verifyApiKey = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'] || req.query.api_key;
+  const validApiKey = process.env.API_KEY || 'labordashboard2024';
+
+  if (!apiKey || apiKey !== validApiKey) {
+    return res.status(401).json({ error: 'Clé API invalide ou manquante' });
+  }
+  next();
+};
+
 // Initialisation de l'app
 const app = express();
 const server = http.createServer(app);
