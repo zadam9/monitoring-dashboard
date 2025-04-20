@@ -23,7 +23,8 @@
     "dockerode": "^3.3.5",
     "node-fetch": "^2.6.12",
     "socket.io": "^4.7.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
