@@ -1,169 +1,92 @@
 # Motor - Dashboard de Monitoring Docker
 
-Un tableau de bord de monitoring en temps réel pour surveiller vos containers Docker, les ressources système et les statuts des sites web.
+Un dashboard moderne pour surveiller vos conteneurs Docker et services en temps réel.
 
-![Dashboard Screenshot](https://via.placeholder.com/800x400?text=Motor+Dashboard)
+## 🚧 En cours de développement
+
+Le site [dashboard.aitalla.cloud](https://dashboard.aitalla.cloud) est actuellement en cours de construction. Certaines fonctionnalités peuvent ne pas être disponibles ou être en cours de développement.
 
 ## Fonctionnalités
 
-- 📊 **Monitoring en temps réel** : Suivi des ressources système (CPU, RAM, uptime)
-- 🐳 **Gestion des containers Docker** : Liste des containers avec états et informations détaillées
-- 📝 **Accès aux logs** : Visualisation et copie des logs de chaque container
-- 🌐 **Statut des sites web** : Vérification de l'activité de vos services web et HTTPS
-- 📈 **Graphiques** : Visualisation graphique de l'utilisation des ressources
-- 🔒 **Sécurité système réelle** : Analyse des vulnérabilités, ports ouverts et utilisateurs root de votre VM
-- 🌓 **Mode sombre/clair** : Interface adaptable selon vos préférences
-- ⚠️ **Système d'alertes** : Notifications en cas d'utilisation excessive des ressources
-- 📤 **Exportation de rapports** : Génération de rapports sur l'état actuel du système
-
-## Designs disponibles
-
-Le projet propose deux designs d'interface différents :
-
-1. **Design classique** (branche `main`) - Interface verticale traditionnelle, simple et fonctionnelle
-2. **Design moderne** (branche `redesign-modern`) - Interface avec sidebar, charts améliorés et fonctionnalités supplémentaires
-
-### Comment changer de design
-
-Pour basculer entre les deux designs, utilisez les commandes Git suivantes :
-
-```bash
-# Pour le design classique
-git checkout main
-
-# Pour le design moderne
-git checkout redesign-modern
-```
-
-Ensuite, redémarrez l'application pour appliquer le changement.
-
-## Prérequis
-
-- Node.js (v14 ou supérieur)
-- Docker installé et configuré
-- Un serveur Linux, macOS ou Windows avec Docker Engine
+- Surveillance en temps réel des conteneurs Docker
+- Métriques système (CPU, Mémoire, Disque)
+- Historique des performances
+- Audit de sécurité (en cours de développement)
+- Interface utilisateur moderne et responsive
+- Mode sombre/clair
+- Export de rapports
 
 ## Installation
 
 1. Clonez le dépôt :
-   ```
-   git clone https://github.com/votre-username/monitoring-dashboard.git
-   cd monitoring-dashboard
-   ```
+```bash
+git clone https://github.com/votre-utilisateur/monitoring-dashboard.git
+```
 
-2. Choisissez le design souhaité :
-   ```
-   git checkout main     # Pour le design classique
-   git checkout redesign-modern  # Pour le design moderne
-   ```
+2. Installez les dépendances :
+```bash
+cd monitoring-dashboard
+npm install
+```
 
-3. Installez les dépendances :
-   ```
-   npm install
-   ```
+3. Configurez les variables d'environnement :
+```bash
+cp .env.example .env
+# Modifiez les valeurs dans .env selon votre configuration
+```
 
-4. Démarrez l'application :
-   ```
-   npm start
-   ```
-   
-   Ou utilisez Docker :
-   ```
-   docker-compose up -d
-   ```
+4. Démarrez le serveur :
+```bash
+npm start
+```
 
-5. Accédez au dashboard dans votre navigateur :
-   ```
-   http://localhost:8080
-   ```
+## Utilisation avec Docker
 
-## Déploiement
+1. Construisez l'image :
+```bash
+docker-compose build
+```
 
-Ce projet est configuré pour un déploiement automatique via CI/CD. À chaque push sur la branche principale, le système redéploie automatiquement l'application.
+2. Démarrez les conteneurs :
+```bash
+docker-compose up -d
+```
 
 ## Configuration
 
-Vous pouvez personnaliser le dashboard en modifiant les variables d'environnement :
+Le dashboard peut être configuré via les variables d'environnement suivantes :
 
-- `PORT` : Port d'écoute du serveur (8080 par défaut)
-- `TARGET_WEBSITE` : Site à surveiller (aitalla.cloud par défaut)
-
-### Configuration du design moderne
-
-Le design moderne offre des options supplémentaires :
-
-- Personnalisation des couleurs
-- Bascule du mode sombre/clair
-- Disposition des widgets
-- Seuils d'alertes ajustables
+- `PORT` : Port d'écoute du serveur (défaut: 8080)
+- `API_KEY` : Clé API pour sécuriser les appels (défaut: labordashboard2024)
+- `EMAIL_USER` : Email pour les notifications
+- `EMAIL_PASSWORD` : Mot de passe de l'email
+- `ADMIN_EMAIL` : Email de l'administrateur
 
 ## Développement
 
-- `npm run dev` : Démarrer en mode développement avec hot-reload
-- `npm test` : Exécuter les tests
-- `npm run build` : Construire pour la production
+Pour contribuer au projet :
 
-## Contribution
+1. Créez une branche pour votre fonctionnalité :
+```bash
+git checkout -b feature/ma-nouvelle-fonctionnalite
+```
 
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou proposer une pull request.
+2. Committez vos changements :
+```bash
+git commit -m "feat: ajout de ma nouvelle fonctionnalité"
+```
+
+3. Poussez vers GitHub :
+```bash
+git push origin feature/ma-nouvelle-fonctionnalite
+```
+
+4. Créez une Pull Request
 
 ## Licence
 
-[MIT](LICENSE)
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
-## Auteur
+## Contact
 
-Créé avec ❤️ par Adam 
-
-## Instructions pour lancer avec accès système réel
-
-Pour que le dashboard puisse accéder aux informations système réelles (nécessaire pour l'onglet Sécurité), vous devez lancer le container avec des privilèges étendus :
-
-```bash
-# Construire l'image
-docker build -t monitoring-dashboard .
-
-# Lancer avec privilèges étendus pour accéder aux informations système
-docker run -d --name monitoring-dashboard \
-  -p 8080:8080 \
-  --privileged \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /etc:/host/etc:ro \
-  -v /proc:/host/proc:ro \
-  -v /sys:/host/sys:ro \
-  -v /var/log:/host/var/log:ro \
-  monitoring-dashboard
-```
-
-Cela permet au container d'accéder :
-- Au socket Docker pour contrôler les containers
-- Aux fichiers système en lecture seule pour les analyses de sécurité
-- Aux journaux système pour l'analyse des logs
-
-### ⚠️ Avertissement de sécurité
-
-L'utilisation du flag `--privileged` donne au container des permissions étendues sur la machine hôte. 
-Utilisez cette configuration uniquement sur des environnements contrôlés comme votre VM de développement AWS.
-En production, privilégiez une approche plus restrictive avec des permissions spécifiques.
-
-## Onglet Sécurité
-
-L'onglet Sécurité du dashboard surveille en temps réel les aspects de sécurité de votre infrastructure :
-
-- **Score de sécurité** : Calcul dynamique basé sur les vulnérabilités détectées
-- **Ports ouverts** : Détection des ports exposés avec évaluation des risques
-- **Utilisateurs root** : Identification des comptes disposant de privilèges root
-- **Services exposés** : Liste des services réseau accessibles 
-- **Vulnérabilités** : Analyse automatique des failles potentielles
-- **Fichiers modifiés** : Surveillance des fichiers système critiques récemment modifiés
-
-L'application utilise des outils système standard (ss, netstat, nmap si disponible) pour collecter ces données directement depuis votre VM. Toutes les analyses sont effectuées en temps réel.
-
-### Audit de sécurité
-
-Vous pouvez déclencher manuellement un audit de sécurité approfondi via le bouton dédié. Cet audit effectue des vérifications supplémentaires :
-
-- Analyse des ports avec nmap (si disponible)
-- Vérification des processus avec privilèges élevés
-- Analyse de l'état du pare-feu
-- Détection des utilisateurs connectés 
+Pour toute question ou suggestion, contactez-nous à [contact@aitalla.cloud](mailto:contact@aitalla.cloud) 

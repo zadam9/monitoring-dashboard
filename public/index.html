@@ -104,11 +104,6 @@
             <i class="fas fa-file-export"></i>
             <span>Exporter</span>
           </button>
-          
-          <div class="user-profile">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" alt="Admin" class="avatar">
-            <span>Admin</span>
-          </div>
         </div>
       </header>
       
@@ -545,88 +540,40 @@
       
       <!-- Security Section -->
       <div id="security-section" class="content-section">
-        <div class="section-header">
-          <h2><i class="fas fa-shield-alt"></i> Sécurité</h2>
-          <div class="security-actions">
-            <button id="run-security-audit" class="action-button">
-              <i class="fas fa-search"></i>
-              <span>Lancer un audit</span>
-            </button>
-          </div>
-        </div>
-        
-        <div class="security-grid">
-          <div class="security-card">
-            <h3><i class="fas fa-shield-virus"></i> Vulnérabilités</h3>
-            <div class="security-content">
-              <div class="security-score">
-                <div class="score-value" id="security-score-value">-</div>
-                <div class="score-label">Score de sécurité</div>
-              </div>
-              <div class="last-audit">
-                <span>Dernier audit:</span>
-                <span id="last-audit-time">-</span>
-              </div>
+        <div class="security-container">
+          <div class="security-header">
+            <h2>Audit de Sécurité</h2>
+            <div class="construction-message">
+              <i class="fas fa-tools"></i>
+              <p>Cette section est en cours de construction</p>
             </div>
           </div>
           
-          <div class="security-card">
-            <h3><i class="fas fa-lock"></i> Ports ouverts</h3>
-            <div class="security-content">
-              <table id="open-ports-table">
-                <thead>
-                  <tr>
-                    <th>Port</th>
-                    <th>Service</th>
-                    <th>État</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="3">Aucune donnée disponible</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="security-score">
+            <div class="score-display">
+              <span class="score-value" id="security-score">--</span>
+              <span class="score-label">Score de sécurité</span>
             </div>
+            <p class="last-audit" id="last-audit">Dernier audit: Jamais</p>
           </div>
           
-          <div class="security-card">
-            <h3><i class="fas fa-user-shield"></i> Utilisateurs root</h3>
-            <div class="security-content">
-              <table id="root-users-table">
-                <thead>
-                  <tr>
-                    <th>Container</th>
-                    <th>Utilisateur</th>
-                    <th>État</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="3">Aucune donnée disponible</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="security-metrics">
+            <div class="metric-card">
+              <i class="fas fa-door-open"></i>
+              <h3>Ports ouverts</h3>
+              <p id="open-ports-count">0</p>
             </div>
-          </div>
-          
-          <div class="security-card">
-            <h3><i class="fas fa-exclamation-triangle"></i> Vulnérabilités</h3>
-            <div class="security-content">
-              <table id="vulnerabilities-table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Niveau</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="3">Aucune donnée disponible</td>
-                  </tr>
-                </tbody>
-              </table>
+            
+            <div class="metric-card">
+              <i class="fas fa-user-shield"></i>
+              <h3>Utilisateurs root</h3>
+              <p id="root-users-count">0</p>
+            </div>
+            
+            <div class="metric-card">
+              <i class="fas fa-bug"></i>
+              <h3>Vulnérabilités</h3>
+              <p id="vulnerabilities-count">0</p>
             </div>
           </div>
         </div>

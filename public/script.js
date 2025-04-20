@@ -506,8 +506,8 @@ function switchSection(sectionId) {
   const targetSection = document.getElementById(sectionId);
   if (targetSection) {
     targetSection.classList.add('active');
-    
-    // Mettre à jour le titre de la page
+  
+  // Mettre à jour le titre de la page
     const pageTitle = document.querySelector('.page-title h2');
     if (pageTitle) {
       // Trouver le texte du lien correspondant
@@ -1283,11 +1283,11 @@ async function controlContainer(containerId, action) {
         'x-api-key': appState.apiKey
       }
     });
-
+    
     if (!response.ok) {
       throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
-
+    
     const result = await response.json();
     showAlert(`Conteneur ${action} avec succès`, 'success');
     updateContainersList(); // Rafraîchir la liste des conteneurs
@@ -1418,9 +1418,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.sidebar').classList.add('collapsed');
       }
     });
+    });
   });
-});
-
+  
 // Fonction pour charger la documentation
 async function loadDocumentation() {
   try {
@@ -1437,6 +1437,26 @@ async function loadDocumentation() {
 
     const documentation = await response.json();
     updateDocumentationUI(documentation);
+
+    // Mettre à jour les liens de documentation
+    const documentationLinks = document.querySelectorAll('.read-more');
+    documentationLinks.forEach(link => {
+      const title = link.closest('.documentation-item').querySelector('h4').textContent;
+      switch(title) {
+        case 'Prise en main':
+          link.href = '/docs/getting-started';
+          break;
+        case 'Fonctionnalités principales':
+          link.href = '/docs/features';
+          break;
+        case 'Documentation technique':
+          link.href = '/wiki/architecture';
+          break;
+        case 'Questions fréquentes':
+          link.href = '/wiki/api';
+          break;
+      }
+    });
   } catch (error) {
     console.error('Erreur lors du chargement de la documentation:', error);
     showAlert('Erreur lors du chargement de la documentation. Veuillez réessayer.', 'error');
@@ -1445,78 +1465,17 @@ async function loadDocumentation() {
 
 // Fonction pour mettre à jour l'interface de documentation
 function updateDocumentationUI(documentation) {
+  // Mise à jour des guides
   const guidesContainer = document.querySelector('.documentation-content');
-  if (!guidesContainer || !documentation.sections) return;
-
-  guidesContainer.innerHTML = documentation.sections.map(section => `
-    <div class="documentation-section" id="${section.id}">
-      <h3>${section.title}</h3>
-      <div class="documentation-grid">
-        ${section.guides.map(guide => `
-          <div class="documentation-item">
-            <h4>${guide.title}</h4>
-            <p>${guide.description}</p>
-            <a href="${guide.link}" class="read-more" data-section="${section.id}">
-              Lire plus <i class="fas fa-arrow-right"></i>
-            </a>
-          </div>
-        `).join('')}
+  if (guidesContainer && documentation.guides) {
+    guidesContainer.innerHTML = documentation.guides.map(guide => `
+      <div class="documentation-item">
+        <h4>${guide.title}</h4>
+        <p>${guide.description}</p>
+        <a href="${guide.link}" class="read-more">Lire plus <i class="fas fa-arrow-right"></i></a>
       </div>
-    </div>
-  `).join('');
-
-  // Ajouter les écouteurs d'événements pour les liens
-  const documentationLinks = document.querySelectorAll('.read-more');
-  documentationLinks.forEach(link => {
-    link.addEventListener('click', async function(e) {
-      e.preventDefault();
-      const href = this.getAttribute('href');
-      const section = this.getAttribute('data-section');
-      
-      try {
-        const response = await fetch(href);
-        const data = await response.json();
-        
-        // Créer une modale pour afficher le contenu
-        const modal = document.createElement('div');
-        modal.className = 'modal active';
-        modal.innerHTML = `
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3>${data.title}</h3>
-              <button class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-              ${data.content}
-            </div>
-            <div class="modal-footer">
-              <div class="breadcrumb">
-                ${section} > ${data.title}
-              </div>
-            </div>
-          </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Gérer la fermeture de la modale
-        const closeButton = modal.querySelector('.modal-close');
-        closeButton.addEventListener('click', () => {
-          modal.remove();
-        });
-        
-        // Fermer la modale en cliquant en dehors
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) {
-            modal.remove();
-          }
-        });
-      } catch (error) {
-        console.error('Erreur lors du chargement de la documentation:', error);
-        showAlert('Erreur lors du chargement de la documentation', 'error');
-      }
-    });
-  });
+    `).join('');
+  }
 }
 
 // Fonction pour lancer un audit de sécurité
@@ -1598,6 +1557,56 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDocumentation();
 });
 
+// Gestion des clics sur les liens de documentation
+document.addEventListener('DOMContentLoaded', function() {
+  const documentationLinks = document.querySelectorAll('.read-more');
+  
+  documentationLinks.forEach(link => {
+    link.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const href = this.getAttribute('href');
+      
+      try {
+        const response = await fetch(href);
+        const data = await response.json();
+        
+        // Créer une modale pour afficher le contenu
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>${data.title}</h3>
+              <button class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+              ${data.content}
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Gérer la fermeture de la modale
+        const closeButton = modal.querySelector('.modal-close');
+        closeButton.addEventListener('click', () => {
+          modal.remove();
+        });
+        
+        // Fermer la modale en cliquant en dehors
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        });
+      } catch (error) {
+        console.error('Erreur lors du chargement de la documentation:', error);
+        alert('Erreur lors du chargement de la documentation');
+      }
+    });
+    });
+  });
+  
 // Fonction pour exporter le rapport PDF
 async function exportReport() {
   try {

@@ -882,100 +882,26 @@ app.get('/wiki/api', verifyApiKey, (req, res) => {
 // Route pour la documentation
 app.get('/api/documentation', verifyApiKey, (req, res) => {
   const documentation = {
-    sections: [
+    guides: [
       {
-        id: 'getting-started',
         title: 'Prise en main',
-        guides: [
-          {
-            title: 'Installation',
-            description: 'Guide d\'installation du dashboard',
-            link: '/docs/getting-started/installation'
-          },
-          {
-            title: 'Configuration initiale',
-            description: 'Configuration de base du dashboard',
-            link: '/docs/getting-started/configuration'
-          },
-          {
-            title: 'Premiers pas',
-            description: 'Commencez à utiliser le dashboard',
-            link: '/docs/getting-started/first-steps'
-          }
-        ]
+        description: 'Guide de démarrage rapide pour utiliser le dashboard',
+        link: '/docs/getting-started'
       },
       {
-        id: 'features',
-        title: 'Fonctionnalités',
-        guides: [
-          {
-            title: 'Surveillance des conteneurs',
-            description: 'Gérer et surveiller vos conteneurs Docker',
-            link: '/docs/features/containers'
-          },
-          {
-            title: 'Surveillance système',
-            description: 'Surveiller les ressources système',
-            link: '/docs/features/system'
-          },
-          {
-            title: 'Sécurité',
-            description: 'Fonctionnalités de sécurité et audit',
-            link: '/docs/features/security'
-          },
-          {
-            title: 'Alertes et notifications',
-            description: 'Configuration des alertes et notifications',
-            link: '/docs/features/alerts'
-          }
-        ]
+        title: 'Fonctionnalités principales',
+        description: 'Découvrez les principales fonctionnalités du dashboard',
+        link: '/docs/features'
       },
       {
-        id: 'architecture',
         title: 'Architecture',
-        guides: [
-          {
-            title: 'Vue d\'ensemble',
-            description: 'Architecture globale du système',
-            link: '/wiki/architecture/overview'
-          },
-          {
-            title: 'Backend',
-            description: 'Architecture du backend Node.js',
-            link: '/wiki/architecture/backend'
-          },
-          {
-            title: 'Frontend',
-            description: 'Architecture du frontend',
-            link: '/wiki/architecture/frontend'
-          }
-        ]
+        description: 'Comprendre l\'architecture du système',
+        link: '/wiki/architecture'
       },
       {
-        id: 'api',
-        title: 'API',
-        guides: [
-          {
-            title: 'Introduction',
-            description: 'Introduction à l\'API REST',
-            link: '/wiki/api/introduction'
-          },
-          {
-            title: 'Authentification',
-            description: 'Sécurité et authentification de l\'API',
-            link: '/wiki/api/auth'
-          },
-          {
-            title: 'Points d\'accès',
-            description: 'Liste complète des endpoints API',
-            link: '/wiki/api/endpoints'
-          },
-          {
-            title: 'WebSocket',
-            description: 'Documentation de l\'API WebSocket',
-            link: '/wiki/api/websocket'
-          }
-        ]
+        title: 'API Documentation',
+        description: 'Documentation complète de l\'API',
+        link: '/wiki/api'
       }
     ]
   };
