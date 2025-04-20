@@ -938,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportButton = document.createElement('button');
   exportButton.id = 'export-report';
   exportButton.innerHTML = '<i class="fas fa-file-export"></i> Exporter';
-  exportButton.addEventListener('click', exportSystemReport);
+  exportButton.addEventListener('click', exportReport);
   document.querySelector('.logs-selector').appendChild(exportButton);
 
   // Gestion du thème
@@ -1275,42 +1275,25 @@ function showContainerDetails(container) {
 
 // Fonctions pour contrôler les containers
 async function controlContainer(containerId, action) {
-  if (!appState.apiKey) {
-    showApiKeyPrompt(() => controlContainer(containerId, action));
-    return;
-  }
-  
   try {
-    const response = await fetch(`/api/containers/${containerId}/${action}?api_key=${appState.apiKey}`, {
+    const response = await fetch(`/api/containers/${containerId}/${action}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': appState.apiKey
+        'x-api-key': appState.apiKey
       }
     });
-    
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Erreur lors de l'action ${action}`);
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
-    
+
     const result = await response.json();
-    showAlert(`Action ${action} réussie sur le container ${result.id}`, 'success');
-    
-    // Rafraîchir la liste des containers après 2 secondes
-    setTimeout(async () => {
-      const containers = await getContainers();
-      updateContainersList(containers);
-    }, 2000);
-    
+    showAlert(`Conteneur ${action} avec succès`, 'success');
+    updateContainersList(); // Rafraîchir la liste des conteneurs
   } catch (error) {
-    console.error(`Erreur ${action}:`, error);
-    showAlert(error.message, 'danger');
-    
-    // Si l'erreur est liée à l'API key, demander une nouvelle clé
-    if (error.message.includes('API key')) {
-      showApiKeyPrompt(() => controlContainer(containerId, action));
-    }
+    console.error(`Erreur lors de ${action} du conteneur:`, error);
+    showAlert(`Erreur lors de ${action} du conteneur: ${error.message}`, 'error');
   }
 }
 
@@ -1441,15 +1424,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // Fonction pour charger la documentation
 async function loadDocumentation() {
   try {
-    const response = await fetch('/api/documentation');
+    const response = await fetch('/api/documentation', {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
+
     if (!response.ok) {
-      throw new Error('Erreur lors du chargement de la documentation');
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
+
     const documentation = await response.json();
     updateDocumentationUI(documentation);
   } catch (error) {
-    console.error('Erreur:', error);
-    showAlert('Erreur lors du chargement de la documentation', 'danger');
+    console.error('Erreur lors du chargement de la documentation:', error);
+    showAlert('Erreur lors du chargement de la documentation. Veuillez réessayer.', 'error');
   }
 }
 
@@ -1478,17 +1467,16 @@ async function runSecurityAudit() {
         'x-api-key': appState.apiKey
       }
     });
-    
+
     if (!response.ok) {
-      throw new Error('Erreur lors de l\'audit de sécurité');
+      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
-    
-    const auditResults = await response.json();
-    updateSecurityUI(auditResults);
-    showAlert('Audit de sécurité terminé avec succès', 'success');
+
+    const securityData = await response.json();
+    updateSecurityUI(securityData);
   } catch (error) {
-    console.error('Erreur:', error);
-    showAlert('Erreur lors de l\'audit de sécurité', 'danger');
+    console.error('Erreur lors de l\'audit de sécurité:', error);
+    showAlert('Erreur lors de l\'audit de sécurité. Veuillez réessayer.', 'error');
   }
 }
 
@@ -1601,73 +1589,70 @@ document.addEventListener('DOMContentLoaded', function() {
 // Fonction pour exporter le rapport PDF
 async function exportReport() {
   try {
-    // Récupérer les données nécessaires
-    const systemResponse = await fetch('/api/system');
-    const systemData = await systemResponse.json();
+    const response = await fetch('/api/system', {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
+    const systemData = await response.json();
     
-    const containersResponse = await fetch('/api/containers');
+    const containersResponse = await fetch('/api/containers', {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
     const containersData = await containersResponse.json();
     
-    const securityResponse = await fetch('/api/security/data');
+    const securityResponse = await fetch('/api/security/data', {
+      headers: {
+        'x-api-key': appState.apiKey
+      }
+    });
     const securityData = await securityResponse.json();
 
-    // Créer un nouveau document PDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
-    // Ajouter le titre
+
+    // Titre
     doc.setFontSize(20);
-    doc.text('Rapport de Monitoring Docker', 20, 20, { align: 'center' });
-    
-    // Ajouter la date
-    doc.setFontSize(12);
-    doc.text(`Généré le: ${new Date().toLocaleString()}`, 20, 30);
-    
+    doc.text('Rapport de Monitoring', 20, 20);
+
     // Informations système
-    doc.setFontSize(16);
-    doc.text('Informations Système', 20, 45);
     doc.setFontSize(12);
-    doc.text(`Hostname: ${systemData.hostname}`, 20, 55);
-    doc.text(`Plateforme: ${systemData.platform}`, 20, 65);
-    doc.text(`Uptime: ${systemData.uptime}`, 20, 75);
-    doc.text(`CPU: ${systemData.cpuCount} cœurs`, 20, 85);
-    doc.text(`Mémoire totale: ${systemData.totalMemory} MB`, 20, 95);
-    
+    doc.text('Informations Système:', 20, 40);
+    doc.text(`Hostname: ${systemData.hostname}`, 20, 50);
+    doc.text(`Platform: ${systemData.platform}`, 20, 60);
+    doc.text(`Uptime: ${formatUptime(systemData.uptime)}`, 20, 70);
+    doc.text(`CPU Count: ${systemData.cpuCount}`, 20, 80);
+    doc.text(`Total Memory: ${formatMemorySize(systemData.totalMemory)}`, 20, 90);
+
     // Statistiques des conteneurs
-    doc.setFontSize(16);
-    doc.text('Statistiques des Conteneurs', 20, 115);
-    doc.setFontSize(12);
-    doc.text(`Nombre total de conteneurs: ${containersData.length}`, 20, 125);
-    doc.text(`Conteneurs en cours d'exécution: ${containersData.filter(c => c.state === 'running').length}`, 20, 135);
-    
+    doc.text('Statistiques des Conteneurs:', 20, 110);
+    doc.text(`Total: ${containersData.length}`, 20, 120);
+    doc.text(`En cours: ${containersData.filter(c => c.state === 'running').length}`, 20, 130);
+
     // Liste des conteneurs
-    doc.setFontSize(16);
-    doc.text('Liste des Conteneurs', 20, 155);
-    doc.setFontSize(10);
-    let y = 165;
+    doc.text('Liste des Conteneurs:', 20, 150);
+    let y = 160;
     containersData.forEach(container => {
-      doc.text(`Nom: ${container.name}`, 20, y);
-      doc.text(`ID: ${container.id}`, 20, y + 5);
-      doc.text(`Image: ${container.image}`, 20, y + 10);
-      doc.text(`État: ${container.state}`, 20, y + 15);
-      doc.text(`Ports: ${container.ports || 'Aucun'}`, 20, y + 20);
-      y += 30;
+      doc.text(`- ${container.name} (${container.id})`, 20, y);
+      doc.text(`  Image: ${container.image}`, 20, y + 10);
+      doc.text(`  État: ${container.state}`, 20, y + 20);
+      doc.text(`  Ports: ${container.ports.join(', ')}`, 20, y + 30);
+      y += 50;
     });
-    
+
     // Informations de sécurité
-    doc.setFontSize(16);
-    doc.text('Informations de Sécurité', 20, y + 10);
-    doc.setFontSize(12);
-    doc.text(`Score de sécurité: ${securityData.score}`, 20, y + 20);
-    doc.text(`Dernier audit: ${securityData.lastAudit}`, 20, y + 30);
-    
+    doc.text('Informations de Sécurité:', 20, y + 20);
+    doc.text(`Score de sécurité: ${securityData.score}`, 20, y + 30);
+    doc.text(`Dernier audit: ${new Date(securityData.lastAudit).toLocaleString()}`, 20, y + 40);
+
     // Sauvegarder le PDF
-    doc.save(`rapport-monitoring-${new Date().toISOString().split('T')[0]}.pdf`);
-    
-    showAlert('Rapport PDF généré avec succès', 'success');
+    const date = new Date().toISOString().split('T')[0];
+    doc.save(`rapport-monitoring-${date}.pdf`);
   } catch (error) {
     console.error('Erreur lors de la génération du rapport:', error);
-    showAlert('Erreur lors de la génération du rapport', 'danger');
+    showAlert('Erreur lors de la génération du rapport. Veuillez réessayer.', 'error');
   }
 }
 
